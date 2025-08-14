@@ -819,6 +819,22 @@ data class DynamicVideo(
                     )
                 }
 
+                ModuleItemCase.DYN_CHARGING_ARCHIVE -> {
+                    val chargingArchiveInfo = dynamic.dynChargingArchive.archiveInfo
+                    return DynamicVideo(
+                        aid = chargingArchiveInfo.avid,
+                        bvid = chargingArchiveInfo.bvid,
+                        cid = chargingArchiveInfo.cid,
+                        title = chargingArchiveInfo.title,
+                        cover = chargingArchiveInfo.cover,
+                        author = author.name,
+                        duration = convertStringTimeToSeconds(chargingArchiveInfo.coverLeftText1),
+                        play = convertStringPlayCountToNumberPlayCount(chargingArchiveInfo.coverLeftText2),
+                        danmaku = convertStringPlayCountToNumberPlayCount(chargingArchiveInfo.coverLeftText3),
+                        avatar = author.face
+                    )
+                }
+
                 else -> TODO("还没写")
             }
         }

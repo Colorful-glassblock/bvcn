@@ -1428,6 +1428,16 @@ message CommentDetail {
 }
 
 //
+message CommonShareCardInfo {
+  //
+  int64 sketch_id = 1;
+  //
+  int64 biz_type = 2;
+  //
+  int64 biz_id = 3;
+}
+
+//
 message Config {
   //
   bool story_vertical_exp = 1;
@@ -3075,6 +3085,36 @@ message MdlDynArticle {
   int32 templateID = 7;
 }
 
+//
+message MdlDynChargingArchive {
+  //
+  MdlDynArchive archive_info = 1;
+  //
+  bool has_permission = 2;
+  //
+  bool can_inline = 3;
+  //
+  string charging_bundle_name = 4;
+  //
+  int64 cfg_preview_end_toast_countdown = 5;
+  //
+  int64 cfg_normal_inline_toast_duration = 6;
+  //
+  OneLineText video_bottom_text_upper = 7;
+  //
+  OneLineText video_bottom_text_lower = 8;
+  //
+  string archive_cover = 9;
+  //
+  string archive_title = 10;
+  //
+  IconButton act_btn = 11;
+  //
+  OneLineText text_normal_inline_toast = 12;
+  //
+  OneLineText text_append_preview_end_toast = 13;
+}
+
 // 动态列表渲染部分-详情模块-通用
 message MdlDynCommon {
   // 物料id
@@ -3408,6 +3448,24 @@ message MdlDynPGC {
   repeated VideoBadge badge_category = 21;
   // 当前是否是pgc正片
   bool is_feature = 22;
+}
+
+//
+message MdlDynShareChargingQA {
+  //
+  ImageSet background_img = 1;
+  //
+  ImageSet left_icon_img = 2;
+  //
+  string title = 3;
+  //
+  IconButton jump_button = 4;
+  //
+  string uri = 5;
+  //
+  CommonShareCardInfo share_card_meta_info = 6;
+  //
+  string title_prefix_bold = 7;
 }
 
 // 动态列表渲染部分-详情模块-订阅卡
@@ -3955,6 +4013,10 @@ message ModuleDynamic {
     MdlDynCourUp dyn_cour_batch_up = 18;
     //话题集合
     MdlDynTopicSet dyn_topic_set = 19;
+    //充电稿件
+    MdlDynChargingArchive dyn_charging_archive = 20;
+    //
+    MdlDynShareChargingQA dyn_share_charging_qa = 21;
   }
 }
 
