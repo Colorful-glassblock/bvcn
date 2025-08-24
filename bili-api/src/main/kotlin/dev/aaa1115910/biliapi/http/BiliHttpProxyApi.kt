@@ -35,8 +35,8 @@ object BiliHttpProxyApi {
                 json(json)
             }
             install(ContentEncoding) {
-                deflate(1.0F)
-                gzip(0.9F)
+                //deflate(1.0F)
+                //gzip(0.9F)
             }
             install(HttpRequestRetry) {
                 retryOnException(maxRetries = 2)
