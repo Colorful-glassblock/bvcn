@@ -2,7 +2,6 @@ package dev.aaa1115910.biliapi.http
 
 import com.tfowl.ktor.client.plugins.JsoupPlugin
 import dev.aaa1115910.biliapi.entity.pgc.PgcType
-import dev.aaa1115910.biliapi.http.BiliHttpApi.getRegionDynamic
 import dev.aaa1115910.biliapi.http.entity.BiliResponse
 import dev.aaa1115910.biliapi.http.entity.BiliResponseWithoutData
 import dev.aaa1115910.biliapi.http.entity.danmaku.DanmakuData
@@ -130,8 +129,8 @@ object BiliHttpApi {
                 json(json)
             }
             install(ContentEncoding) {
-                //deflate(1.0F)
-                //gzip(0.9F)
+                deflate(1.0F)
+                gzip(0.9F)
             }
             install(HttpRequestRetry) {
                 retryOnException(maxRetries = 2)
