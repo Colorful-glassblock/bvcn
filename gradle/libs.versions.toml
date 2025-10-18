@@ -25,6 +25,7 @@ rememberPreference = "1.1.1"
 slf4j-android-mvysny = "2.0.13"
 slf4j-simple = "2.0.17"
 vlc = "3.6.0-eap5"
+zxing = "3.5.3"
 
 [libraries]
 # https://google.github.io/accompanist/
@@ -116,3 +117,6 @@ slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j-simple"
 
 # https://code.videolan.org/videolan/vlc-android
 vlc-android-all = { module = "org.videolan.android:libvlc-all", version.ref = "vlc" }
+
+# https://github.com/zxing/zxing
+zxing = { module = "com.google.zxing:core", version.ref = "zxing" }
