@@ -44,6 +44,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        targetSdk = AppConfiguration.targetSdk
+    }
 }
 
 java {
