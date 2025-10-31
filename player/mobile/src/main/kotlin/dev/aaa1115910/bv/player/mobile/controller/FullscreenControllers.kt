@@ -184,6 +184,7 @@ private fun BottomControllers(
                     duration = totalTime,
                     position = currentTime,
                     bufferedPercentage = bufferedSeekPosition,
+                    playing = isPlaying,
                     onPositionChange = { newPosition, isPressing ->
                         if (!isPressing) onSeekToPosition(newPosition)
                     }

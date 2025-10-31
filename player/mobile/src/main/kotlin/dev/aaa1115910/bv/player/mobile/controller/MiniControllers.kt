@@ -128,6 +128,7 @@ private fun BottomControllers(
                 duration = videoPlayerSeekData.duration,
                 position = videoPlayerSeekData.position,
                 bufferedPercentage = videoPlayerSeekData.bufferedPercentage,
+                playing = videoPlayerStateData.isPlaying,
                 onPositionChange = { newPosition, isPressing ->
                     if (!isPressing) onSeekToPosition(newPosition)
                 }
