@@ -39,11 +39,6 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -56,7 +51,7 @@ android {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(AppConfiguration.jdk))
     }
 }
 
@@ -64,6 +59,7 @@ dependencies {
     api(project(":utils"))
     api(project(":bili-api"))
     api(project(":bili-subtitle"))
+    api(project(":symbols"))
     api(libs.akdanmaku)
     implementation(androidx.activity.compose)
     implementation(androidx.core.ktx)

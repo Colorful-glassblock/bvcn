@@ -19,9 +19,9 @@ ktor-jsoup = "2.3.0"
 logging = "7.0.7"
 lottie = "6.6.6"
 material = "1.12.0"
-protobuf = "4.31.0"
-#noinspection GradleDependency 之后的版本要求 minSDK >= 23
-qrcode = "3.3.0"
+material-symbols-compose = "1.0.1"
+protobuf = "4.31.1"
+qrcode = "4.5.0"
 rememberPreference = "1.1.1"
 slf4j-android-mvysny = "2.0.13"
 slf4j-simple = "2.0.9"
@@ -103,6 +103,10 @@ lottie = { module = "com.airbnb.android:lottie-compose", version.ref = "lottie" 
 
 # https://github.com/material-components/material-components-android
 material = { module = "com.google.android.material:material", version.ref = "material" }
+
+# https://github.com/1552980358/material-symbols-compose
+material-symbols-compose-annotation = { module = "com.github.1552980358.material-symbols-compose:annotation", version.ref = "material-symbols-compose" }
+material-symbols-compose-ksp = { module = "com.github.1552980358.material-symbols-compose:ksp", version.ref = "material-symbols-compose" }
 
 # https://github.com/g0dkar/qrcode-kotlin
 qrcode = { module = "io.github.g0dkar:qrcode-kotlin-android", version.ref = "qrcode" }
