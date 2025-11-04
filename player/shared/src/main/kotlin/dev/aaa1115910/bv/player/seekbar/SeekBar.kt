@@ -25,7 +25,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.inset
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
@@ -85,6 +87,23 @@ fun SeekBar(
             .height(18.dp)
     ) {
         inset(horizontal = 0f, vertical = 0f) {
+            val shadowPaint = android.graphics.Paint().apply {
+                color = android.graphics.Color.BLACK
+                alpha = (0.3f * 255).toInt() // 设置透明度
+                setShadowLayer(8f, 4f, 4f, android.graphics.Color.BLACK) // 模糊半径和偏移
+            }
+
+            // background track shadow
+            drawIntoCanvas { canvas ->
+                canvas.nativeCanvas.drawLine(
+                    size.width * (position / duration.toFloat()),
+                    center.y,
+                    size.width,
+                    center.y,
+                    shadowPaint
+                )
+            }
+
             // background track
             drawLine(
                 color = colors.inactiveTrackColor,
@@ -104,11 +123,30 @@ fun SeekBar(
                 cap = StrokeCap.Round
             )
 
-            // animated wave line
-            val height = size.height / 2
+            // animated wave line shadow
             val waveLenPx = 80f
             val step = 2f
+            val height = size.height / 2
+            val shadowAmpPx = ampPx + 4f // 阴影的振幅稍大
+            var prevShadowX = 0f
+            var prevShadowY = height + shadowAmpPx * sin(phase)
+            drawIntoCanvas { canvas ->
+                for (x in step.toInt()..(size.width * (position / duration.toFloat())).toInt() step step.toInt()) {
+                    val shadowY =
+                        height + shadowAmpPx * sin(2 * PI * x / waveLenPx + phase).toFloat()
+                    canvas.nativeCanvas.drawLine(
+                        prevShadowX,
+                        prevShadowY,
+                        x.toFloat(),
+                        shadowY,
+                        shadowPaint
+                    )
+                    prevShadowX = x.toFloat()
+                    prevShadowY = shadowY
+                }
+            }
 
+            // animated wave line
             var prevX = 0f
             var prevY = height + ampPx * sin(phase)
             for (x in step.toInt()..(size.width * (position / duration.toFloat())).toInt() step step.toInt()) {

@@ -354,9 +354,9 @@ fun BvPlayer(
                 videoPlayer.speed = speed
                 mDanmakuPlayer?.updatePlaySpeed(speed)
             },
-            onToggleDanmaku = {
-                //toggleDanmakuEnabled(videoPlayerConfigData.currentDanmakuEnabled)
-                onToggleDanmaku(videoPlayerConfigData.currentDanmakuEnabled)
+            onToggleDanmaku = { enabled ->
+                toggleDanmakuEnabled(enabled)
+                onToggleDanmaku(enabled)
             },
             onEnabledDanmakuTypesChange = { enabledDanmakuTypes ->
                 onEnabledDanmakuTypesChange(enabledDanmakuTypes)
@@ -379,14 +379,12 @@ fun BvPlayer(
                     .align(Alignment.Center),
                 videoPlayer = videoPlayer, playerListener = videoPlayerListener
             )
-            if (videoPlayerConfigData.currentDanmakuEnabled) {
-                AkDanmakuPlayer(
-                    modifier = Modifier
-                        .alpha(videoPlayerConfigData.currentDanmakuOpacity)
-                        .fillMaxHeight(videoPlayerConfigData.currentDanmakuArea),
-                    danmakuPlayer = mDanmakuPlayer
-                )
-            }
+            AkDanmakuPlayer(
+                modifier = Modifier
+                    .alpha(videoPlayerConfigData.currentDanmakuOpacity)
+                    .fillMaxHeight(videoPlayerConfigData.currentDanmakuArea),
+                danmakuPlayer = mDanmakuPlayer
+            )
         }
     }
 }

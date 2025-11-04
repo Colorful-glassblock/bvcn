@@ -19,8 +19,11 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
@@ -322,6 +325,7 @@ fun BvPlayerControllerVideoContent(
         Log.i("BvPlayerController", "Screen tap")
         if (isMenuOpen) {
             onCloseMenu()
+            showBaseUi = true
         } else {
             if (!is2xPlaying) showBaseUi = !showBaseUi
         }
@@ -412,6 +416,10 @@ fun BvPlayerControllerVideoContent(
     ) {
         content()
 
+        if (videoPlayerStateData.isBuffering && !videoPlayerStateData.isError) {
+            BufferingTip(modifier = Modifier.align(Alignment.Center))
+        }
+
         SeekMoveTip(
             show = isMovingSeek,
             startTime = moveStartTime,
@@ -488,7 +496,10 @@ fun BvPlayerControllerVideoContent(
                         showBaseUi = false
                         onOpenListMenu()
                     },
-                    onOpenMoreMenu = onOpenMoreMenu
+                    onOpenMoreMenu = {
+                        showBaseUi = false
+                        onOpenMoreMenu()
+                    }
                 )
             } else {
                 MiniControllers(
@@ -645,6 +656,16 @@ fun Modifier.detectPlayerGestures(
                 }
             }
         }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun BufferingTip(
+    modifier: Modifier = Modifier
+) {
+    LoadingIndicator(
+        modifier = modifier.size(120.dp)
+    )
 }
 
 @Preview(device = "spec:width=1920px,height=1080px")
