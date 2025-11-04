@@ -59,6 +59,7 @@ import dev.aaa1115910.bv.player.entity.DanmakuType
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerStateData
+import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoCodec
 import dev.aaa1115910.bv.player.entity.VideoListItem
@@ -93,6 +94,7 @@ fun BvPlayerController(
     onDanmakuOpacityChange: (Float) -> Unit,
     onDanmakuScaleChange: (Float) -> Unit,
     onDanmakuAreaChange: (Float) -> Unit,
+    onPlayModeChange: (PlayMode) -> Unit,
     onPlayNewVideo: (VideoListItem) -> Unit,
     content: @Composable BoxScope.() -> Unit
 ) {
@@ -190,6 +192,7 @@ fun BvPlayerController(
                 onDanmakuOpacityChange = onDanmakuOpacityChange,
                 onDanmakuScaleChange = onDanmakuScaleChange,
                 onDanmakuAreaChange = onDanmakuAreaChange,
+                onPlayModeChange = onPlayModeChange,
                 onPlayNewVideo = onPlayNewVideo
             )
         }
@@ -213,6 +216,7 @@ private fun BvPlayerControllerSettings(
     onDanmakuOpacityChange: (Float) -> Unit,
     onDanmakuScaleChange: (Float) -> Unit,
     onDanmakuAreaChange: (Float) -> Unit,
+    onPlayModeChange: (PlayMode) -> Unit,
     onPlayNewVideo: (VideoListItem) -> Unit
 ) {
     MaterialDarkTheme {
@@ -263,7 +267,8 @@ private fun BvPlayerControllerSettings(
 
                 MenuType.More -> {
                     MoreMenu(
-                        onClose = onCloseMenu
+                        onClose = onCloseMenu,
+                        onPlayModeChange = onPlayModeChange
                     )
                 }
             }
@@ -705,6 +710,7 @@ private fun BvPlayerControllerPreview() {
                 onDanmakuOpacityChange = {},
                 onDanmakuAreaChange = {},
                 onDanmakuScaleChange = {},
+                onPlayModeChange = {},
                 onPlayNewVideo = {}
             ) {
                 Box(
