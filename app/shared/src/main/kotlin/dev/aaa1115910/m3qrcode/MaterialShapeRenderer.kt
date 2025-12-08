@@ -4,7 +4,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
-import android.graphics.drawable.VectorDrawable
+import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.core.graphics.withRotation
 import androidx.core.graphics.withSave
@@ -18,7 +18,7 @@ class MaterialShapeRenderer {
     var isMotionPaused: Boolean = false
     var paint: Paint
     var skipStartProgress: Float = 0f
-    var srcImgSvg: VectorDrawable
+    var srcImgSvg: Drawable
     var startDelay: Long = 0
 
     companion object {
@@ -35,7 +35,7 @@ class MaterialShapeRenderer {
         }
     }
 
-    constructor(srcImgSvg: VectorDrawable, destRect: RectF, paint: Paint) {
+    constructor(srcImgSvg: Drawable, destRect: RectF, paint: Paint) {
         this.srcImgSvg = srcImgSvg
         this.destRect = destRect
         this.paint = paint
