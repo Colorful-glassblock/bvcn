@@ -215,8 +215,9 @@ class VideoPlayRepository(
                     sessData = authRepository.sessionData ?: "",
                     buvid3 = authRepository.buvid3 ?: ""
                 ).getResponseData()
-                response.subtitle.subtitles
-                    .map { Subtitle.fromSubtitleItem(it) }
+                response.subtitle?.subtitles
+                    ?.map { Subtitle.fromSubtitleItem(it) }
+                    ?: emptyList()
             }
 
             ApiType.App -> {
