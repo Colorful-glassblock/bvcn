@@ -90,6 +90,8 @@
 
 # ktor 混淆后，请求参数会莫名其妙消失
 -keep class io.ktor.**
+-keep class dev.aaa1115910.biliapi.http.plugins.** { *; }
+-keep class dev.aaa1115910.biliapi.http.util.** { *; }
 # 这部分是加上不混淆 ktor 后冒出来的 missing rules
 -dontwarn java.lang.management.ManagementFactory
 -dontwarn java.lang.management.RuntimeMXBean
