@@ -77,7 +77,8 @@ internal class BiliHttpApiTest {
                     cid = 903675075,
                     fnval = 4048,
                     qn = 127,
-                    sessData = SESSDATA
+                    sessData = SESSDATA,
+                    dedeUserID = UID
                 )
                 println(response)
             }
@@ -93,7 +94,8 @@ internal class BiliHttpApiTest {
                     cid = 331748015,
                     fnval = 4048,
                     qn = 127,
-                    sessData = SESSDATA
+                    sessData = SESSDATA,
+                    dedeUserID = UID
                 )
             )
         }
