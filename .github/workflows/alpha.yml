@@ -8,8 +8,8 @@ on:
 jobs:
   build-alpha:
     name: Build Alpha Apk
-    runs-on: macos-latest
-    if: github.repository == 'aaa1115910/bv'
+    runs-on: ubuntu-latest
+    if: github.repository == 'Colorful-glassblock/bvcn'
 
     steps:
       - name: Checkout
@@ -43,12 +43,12 @@ jobs:
           SIGNING_PROPERTIES: ${{ secrets.SIGNING_PROPERTIES }}
         run: |
           echo ${{ secrets.SIGNING_PROPERTIES }} > encoded_signing_properties
-          base64 -Dd -i encoded_signing_properties > signing.properties
+          base64 -d -i encoded_signing_properties > signing.properties
 
       - name: Add jks file
         run: |
           echo ${{ secrets.SIGN_KEY }} > ./encoded_key
-          base64 -Dd -i encoded_key > key.jks
+          base64 -d -i encoded_key > key.jks
 
       - name: Build apk
         run: ./gradlew assembleDefaultAlpha assembleDefaultDebug
