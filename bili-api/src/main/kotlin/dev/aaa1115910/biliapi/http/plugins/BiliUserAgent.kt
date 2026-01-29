@@ -9,9 +9,11 @@ import io.ktor.client.request.header
 import io.ktor.client.request.host
 import io.ktor.http.HttpHeaders
 import io.ktor.util.logging.KtorSimpleLogger
+import io.ktor.utils.io.KtorDsl
 
 private val LOGGER = KtorSimpleLogger("dev.aaa1115910.biliapi.http.plugins.BiliUserAgent")
 
+@KtorDsl
 class BiliUserAgentConfig(
     var version: String = BiliAppConf.APP_VERSION_NAME,
     var buildCode: Int = BiliAppConf.APP_BUILD_CODE,
