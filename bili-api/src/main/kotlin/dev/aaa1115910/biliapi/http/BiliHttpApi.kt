@@ -82,7 +82,7 @@ import io.ktor.client.statement.readBytes
 import io.ktor.http.Parameters
 import io.ktor.http.URLProtocol
 import io.ktor.serialization.kotlinx.json.json
-import io.ktor.util.InternalAPI
+import io.ktor.utils.io.InternalAPI
 import io.ktor.util.toByteArray
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.CoroutineScope
@@ -1133,7 +1133,7 @@ object BiliHttpApi {
             parameter("main_ver", mainVer)
             highlight?.let { parameter("highlight", it) }
             parameter("buvid", buvid)
-        }.content.toByteArray().toString(Charsets.UTF_8)
+        }.readRawBytes().toString(Charsets.UTF_8)
         val keywordSuggest = json.decodeFromString<KeywordSuggest>(responseText)
         val result = json.decodeFromJsonElement<KeywordSuggest.Result>(keywordSuggest.result!!)
         keywordSuggest.suggests.addAll(result.tag)
