@@ -9,19 +9,19 @@
 [![GitHub Release Release](https://img.shields.io/endpoint?url=https%3A%2F%2Fbadge.versions.bv.aaa1115910.dev%2Fgithub%3Fprerelease%3Dfalse)](https://github.com/aaa1115910/bv/releases?q=prerelease%3Afalse)
 [![GitHub Release Pre-Release](https://img.shields.io/endpoint?url=https%3A%2F%2Fbadge.versions.bv.aaa1115910.dev%2Fgithub%3Fprerelease%3Dtrue)](https://github.com/aaa1115910/bv/releases?q=prerelease%3Atrue)
 
-[![Workflow Release](https://github.com/aaa1115910/bv/actions/workflows/release.yml/badge.svg)](https://github.com/aaa1115910/bv/actions/workflows/release.yml)
-[![Workflow Alpha](https://github.com/aaa1115910/bv/actions/workflows/alpha.yml/badge.svg)](https://github.com/aaa1115910/bv/actions/workflows/alpha.yml)
+[![Workflow Release](https://github.com/Colorful-glassblock/bvcn/actions/workflows/release.yml/badge.svg)](https://github.com/aaa1115910/bv/actions/workflows/release.yml)
+[![Workflow Alpha](https://github.com/Colorful-glassblock/bvcn/actions/workflows/alpha.yml/badge.svg)](https://github.com/aaa1115910/bv/actions/workflows/alpha.yml)
 [![Android Sdk Require](https://img.shields.io/badge/Android-6.0%2B-informational?logo=android)](https://developer.android.com/jetpack/androidx/versions#version-table)
-[![GitHub](https://img.shields.io/github/license/aaa1115910/bv)](https://github.com/aaa1115910/bv)
+[![GitHub](https://img.shields.io/github/license/Colorful-glassblock/bvcn)](https://github.com/Colorful-glassblock/bvcn)
 
-**BVCN ~~无法~~可以在中国大陆地区内的智能电视上使用，如有相关使用需求请使用 [云视听小电视](https://app.bilibili.com)**
+**BVCN ~~无法~~可以在中国大陆地区内的智能电视上使用，如有相关使用需求请使用 [云视听小电视(不是哥们你真用啊)](https://app.bilibili.com)**
 
 **~~禁止~~允许在中国境内传播、宣传、分发 BVCN**
 
 </div>
 
 ---
-BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三方应用，适配 `Android 移动端`
+BVCN ~~(Bug Video For CN)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三方应用，适配 `Android 移动端`
 和 `Android TV`，使用 `Jetpack Compose` 开发
 
 **都是随心乱写的代码，能跑就行。**
@@ -38,11 +38,11 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
 
 ### Release
 
-- [Github Release](https://github.com/aaa1115910/bv/releases?q=prerelease%3Afalse)
+- [Github Release](https://github.com/Colorful-glassblock/bvcn/releases?q=prerelease%3Afalse)
 
 ### Alpha
 
-- [Github Release](https://github.com/aaa1115910/bv/releases?q=prerelease%3Atrue)
+- [Github Release](https://github.com/Colorful-glassblock/bvcn/releases?q=prerelease%3Atrue)
 
 ## License
 
