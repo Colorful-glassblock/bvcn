@@ -1522,7 +1522,7 @@ object BiliHttpApi {
     )
 
     suspend fun download(url: String): ByteArray {
-        return client.get(url).readBytes()
+        return client.get(url).readRawBytes()
     }
 
     suspend fun getWebVideoShot(
