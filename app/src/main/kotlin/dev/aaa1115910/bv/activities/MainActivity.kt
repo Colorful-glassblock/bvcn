@@ -10,13 +10,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dev.aaa1115910.bv.repository.UserRepository
-<<<<<<< HEAD:app/src/main/kotlin/dev/aaa1115910/bv/activities/MainActivity.kt
 import dev.aaa1115910.bv.screen.MainScreen
 import dev.aaa1115910.bv.screen.user.lock.UnlockUserScreen
-=======
-import dev.aaa1115910.bv.tv.screens.MainScreen
-import dev.aaa1115910.bv.tv.screens.user.lock.UnlockUserScreen
->>>>>>> 9be90bc5 (Remove mainland China detection and allow unrestricted access):app/tv/src/main/kotlin/dev/aaa1115910/bv/tv/activities/MainActivity.kt
 import dev.aaa1115910.bv.ui.theme.BVTheme
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.launch
@@ -65,4 +60,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
