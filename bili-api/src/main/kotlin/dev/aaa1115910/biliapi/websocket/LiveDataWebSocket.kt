@@ -184,7 +184,7 @@ object LiveDataWebSocket {
         }
         return if (bytePack.remaining > 16) result + handleLiveEventBody(
             bytePack.readFrameHeader(),
-            bytePack.readBytes()
+            bytePack.readByteArray()
         )
         else result
     }
