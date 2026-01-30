@@ -162,24 +162,24 @@ object LiveDataWebSocket {
                     //普通包正文使用brotli压缩,解压为一个带头部的协议0普通包
                     3 -> {
                         logger.warn { "todo package version: ${head.version}" }
-                        bytePack.readBytes()
+                        bytePack.readByteArray()
                     }
 
                     else -> {
                         logger.warn { "Unknown package version: ${head.version}" }
-                        bytePack.readBytes()
+                        bytePack.readByteArray()
                     }
                 }
             }
 
             //认证包回复
             8 -> {
-                bytePack.readBytes(10)
+                bytePack.readByteArray(10)
             }
 
             else -> {
                 logger.warn { "Unknown package type: ${head.type}" }
-                bytePack.readBytes()
+                bytePack.readByteArray()
             }
         }
         return if (bytePack.remaining > 16) result + handleLiveEventBody(
