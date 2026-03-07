@@ -2,29 +2,130 @@ name: Check Issues
 
 on:
   issues:
-    types: [ opened ]
+    types: [opened, edited]
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - if: contains(github.event.issue.title, '以简单的一段字概括' )
-        id: close-invalid-title
-        name: Close Issue (invalid title)
-        uses: actions-cool/issues-helper@v3
+      - uses: actions/checkout@v3
+      
+      - name: Check issue content
+        id: check
+        uses: actions/github-script@v6
         with:
-          actions: 'add-labels,close-issue'
-          token: ${{ secrets.GITHUB_TOKEN }}
-          issue-number: ${{ github.event.issue.number }}
-          labels: '无效'
-          close-reason: 'not_planned'
-
-      - if: contains(github.event.issue.body, '我正在使用旧版本' )
-        id: close-old-version
+          script: |
+            const body = context.payload.issue.body;
+            const title = context.payload.issue.title;
+            
+            // 检查标题是否还是默认内容
+            if (title.includes('以简单的一段字概括')) {
+              core.setFailed('标题未修改');
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '❌ 请修改标题，不要使用默认内容！'
+              });
+              
+              await github.rest.issues.update({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'closed',
+                state_reason: 'not_planned'
+              });
+              
+              return;
+            }
+            
+            // 检查复选框状态
+            const checkboxPattern = /-\s\[\s([x\s])\s\]\s(.+)/g;
+            const checkboxes = [];
+            let match;
+            
+            while ((match = checkboxPattern.exec(body)) !== null) {
+              checkboxes.push({
+                checked: match[1].toLowerCase() === 'x',
+                text: match[2]
+              });
+            }
+            
+            // 分析复选框状态
+            if (checkboxes.length >= 6) {
+              const firstFive = checkboxes.slice(0, 5);
+              const lastOne = checkboxes[5];
+              
+              // 检查前5个是否都勾选
+              const allFirstFiveChecked = firstFive.every(cb => cb.checked);
+              // 检查最后一个是否未勾选
+              const lastNotChecked = !lastOne.checked;
+              
+              if (allFirstFiveChecked && lastNotChecked) {
+                // 完美通过！感谢用户
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: '✅ 感谢您认真阅读并填写了 issue 模板！我们会尽快处理。'
+                });
+              } else {
+                // 检查失败
+                let errorMsg = '❌ 请重新检查复选框：\n';
+                if (!allFirstFiveChecked) {
+                  errorMsg += '- 前5项必须全部勾选（确认您已阅读并同意）\n';
+                }
+                if (!lastNotChecked) {
+                  errorMsg += '- 最后一项**不应该**被勾选（如果您勾了，说明您没有认真阅读）\n';
+                }
+                
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: errorMsg + '\n请根据要求修改后重新提交。'
+                });
+                
+                // 关闭 issue
+                await github.rest.issues.update({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  state: 'closed',
+                  state_reason: 'not_planned'
+                });
+              }
+            } else {
+              // 复选框数量不足
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '❌ 请使用正确的 issue 模板提交。'
+              });
+              
+              await github.rest.issues.update({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'closed',
+                state_reason: 'not_planned'
+              });
+            }
+            
+      # 检查是否选择了旧版本
+      - if: contains(github.event.issue.body, '我正在使用旧版本')
         name: Close Issue (old version)
         uses: actions-cool/issues-helper@v3
         with:
-          actions: 'create-comment,close-issue'
+          actions: 'create-comment,close-issue,add-labels'
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.issue.number }}
+          labels: '使用旧版本'
           close-reason: 'not_planned'
-          body: 请先尝试使用当前最新 alpha 版本，如果问题依然存在再提交 issue
+          body: |
+            ⚠️ 您选择了"我正在使用旧版本"
+            
+            请先尝试使用当前最新 alpha 版本，如果问题依然存在再重新提交 issue。
+            
+            ![GitHub Release Pre-Release](https://img.shields.io/endpoint?url=https%3A%2F%2Fbadge.versions.bv.aaa1115910.dev%2Fgithub%3Fprerelease%3Dtrue)
