@@ -19,8 +19,8 @@ body:
           required: true
         - label: 应用仅支持系统硬件解码，如遇到播放卡顿或无法播放，请先检查设备芯片性能以及编码支持情况
           required: true
-        - label: 我已确认以上条款，如果未按要求填写，我接受 issue 被直接关闭或被维护者提醒
-          required: true
+        - label: 我确保我并非只是在不检查全都勾上 不是不认真检查 我不同意不关闭issue并被维护者批评
+          required: false
 
   - type: textarea
     id: description
