@@ -18,6 +18,10 @@
 
 **~~禁止~~允许在中国境内传播、宣传、分发 BVCN**
 
+**由于fucking又stupid的bilibili官方对BAC大打出手 本项目以后可能不再可用 目前评论区功能已经不正常**
+**R.I.P. Bilibili-API-collect 感谢此项目对bilibili接口的收集 否则非官方bilibili client开发将十分艰难**
+**愿bilibili不会变质 可惜已经变了**
+
 </div>
 
 ---
