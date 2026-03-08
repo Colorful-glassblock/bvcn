@@ -14,138 +14,237 @@ jobs:
     # 只检查 Bug 报告模板
     if: contains(github.event.issue.labels.*.name, 'bug') || contains(github.event.issue.body, 'Bug 报告')
     runs-on: ubuntu-latest
+    outputs:
+      violations: ${{ steps.collect-violations.outputs.violations }}
+      should_close: ${{ steps.collect-violations.outputs.should_close }}
     steps:
       - uses: actions/checkout@v3
         with:
           persist-credentials: false
       
-      - name: Validate bug report
+      # 第一步：收集所有违规点
+      - name: Collect all violations
+        id: collect-violations
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.ISSUE_CHECKER_PAT }}
           script: |
             const body = context.payload.issue.body;
             const title = context.payload.issue.title;
-            let closeReason = null;
-            let commentBody = '';
+            
+            // 存储所有违规
+            const violations = [];
             
             // 1. 检查标题
             if (title.includes('以简单的一段字概括')) {
-              closeReason = '标题未修改，仍使用默认内容';
-              commentBody = '❌ **无效的 Bug 报告**\n\n请修改标题，使用简洁明了的问题描述，不要保留默认内容。';
+              violations.push({
+                type: 'title',
+                message: '❌ **标题违规**：使用默认标题，未修改为具体问题描述'
+              });
             }
             
-            // 2. 检查复选框（如果标题已触发关闭，可以不检查，但为了完整还是检查）
-            if (!closeReason) {
-              const checkboxPattern = /-\s\[\s([x\s])\s\]\s(.+)/g;
-              const checkboxes = [];
-              let match;
+            // 2. 检查复选框
+            const checkboxPattern = /-\s\[\s([x\s])\s\]\s(.+)/g;
+            const checkboxes = [];
+            let match;
+            
+            while ((match = checkboxPattern.exec(body)) !== null) {
+              checkboxes.push({
+                checked: match[1].toLowerCase() === 'x',
+                text: match[2]
+              });
+            }
+            
+            if (checkboxes.length >= 6) {
+              const firstFive = checkboxes.slice(0, 5);
+              const lastOne = checkboxes[5];
               
-              while ((match = checkboxPattern.exec(body)) !== null) {
-                checkboxes.push({
-                  checked: match[1].toLowerCase() === 'x',
-                  text: match[2]
+              // 检查前5项
+              const uncheckedFirstFive = firstFive.filter((cb, index) => !cb.checked);
+              if (uncheckedFirstFive.length > 0) {
+                violations.push({
+                  type: 'checkbox_first_five',
+                  message: `❌ **必选项未勾选**：有 ${uncheckedFirstFive.length} 项必要条款未确认`
                 });
               }
               
-              if (checkboxes.length >= 6) {
-                const firstFive = checkboxes.slice(0, 5);
-                const lastOne = checkboxes[5];
-                
-                const allFirstFiveChecked = firstFive.every(cb => cb.checked);
-                const lastNotChecked = !lastOne.checked;
-                
-                if (!allFirstFiveChecked) {
-                  closeReason = '前5项必选复选框未全部勾选';
-                  commentBody = '❌ **无效的 Bug 报告**\n\n前5项必须全部勾选，确认您已阅读并同意相关条款。';
-                } else if (!lastNotChecked) {
-                  closeReason = '误勾选了最后一项（筛选项）';
-                  commentBody = '❌ **无效的 Bug 报告 - 您没有认真阅读**\n\n' +
-                               '最后一项**不应该**被勾选。如果您勾了，说明您：\n' +
-                               '- 没有仔细阅读模板内容\n' +
-                               '- 只是机械地全选所有复选框\n\n' +
-                               '请重新阅读模板说明后再次提交。';
-                }
-              } else {
-                closeReason = '未使用正确的模板或模板不完整';
-                commentBody = '❌ **无效的 Bug 报告**\n\n请使用完整的 Bug 报告模板提交。';
+              // 检查最后一项（筛选项）
+              if (lastOne.checked) {
+                violations.push({
+                  type: 'checkbox_last',
+                  message: '❌ **筛选项被误勾**：最后一项本不应勾选，说明您没有认真阅读'
+                });
               }
-            }
-            
-            // 3. 检查日志是否填写（关键新增）
-            if (!closeReason) {
-              const logsSection = body.match(/### 相关日志\n\n([\s\S]*?)(?=\n### |\n$)/);
-              const hasLogs = logsSection && logsSection[1] && 
-                             logsSection[1].trim() !== '' && 
-                             !logsSection[1].includes('你可以在 `设置` 中查看') &&  // 检查是否还是默认提示
-                             logsSection[1].length > 10;  // 至少有一些内容
-              
-              if (!hasLogs) {
-                closeReason = '未提供相关日志';
-                commentBody = '❌ **无效的 Bug 报告 - 缺少日志**\n\n' +
-                             '> 没有日志的情况下诊断错误，如同闭着眼开车\n\n' +
-                             '请提供相关日志：\n' +
-                             '- 你可以在 `设置` > `更多设置` > `查看日志` 中查看已保存的日志\n' +
-                             '- 扫码即可下载获取（在同一网络环境下）\n' +
-                             '- 在日志列表中可找到自动生成的崩溃日志\n\n' +
-                             '**没有日志的 Bug 报告无法被诊断和处理**，请补充日志后重新提交。';
-              }
-            }
-            
-            // 4. 如果需要关闭，执行关闭操作
-            if (closeReason) {
-              console.log(`关闭原因: ${closeReason}`);
-              
-              // 添加标签
-              await github.rest.issues.addLabels({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                labels: ['无效', 'bug报告不合格']
-              });
-              
-              // 发送关闭评论
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: commentBody + '\n\n---\n🔄 此 Bug 报告已被自动关闭，请按要求重新提交。'
-              });
-              
-              // 关闭 Issue
-              await github.rest.issues.update({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'closed',
-                state_reason: 'not_planned'
-              });
-              
-              // 抛出错误让工作流显示失败状态
-              core.setFailed(`Bug 报告无效: ${closeReason}`);
             } else {
-              // 通过：发送感谢评论
+              violations.push({
+                type: 'template',
+                message: '❌ **模板不完整**：未使用完整的 Bug 报告模板'
+              });
+            }
+            
+            // 3. 检查日志
+            const logsMatch = body.match(/### 相关日志\n\n([\s\S]*?)(?=\n### |\n$)/);
+            const logsContent = logsMatch ? logsMatch[1].trim() : '';
+            const hasLogs = logsContent && 
+                           logsContent !== '' && 
+                           !logsContent.includes('你可以在 `设置` 中查看') &&
+                           logsContent.length > 10;
+            
+            if (!hasLogs) {
+              violations.push({
+                type: 'logs',
+                message: '❌ **缺少日志**：没有日志如同闭眼开车，无法诊断问题'
+              });
+            }
+            
+            // 4. 检查版本选择
+            if (body.includes('我正在使用旧版本')) {
+              violations.push({
+                type: 'old_version',
+                message: '❌ **使用旧版本**：本项目不为旧版本提供维护支持'
+              });
+            }
+            
+            // 5. 检查必要字段是否填写（Bug描述、复现步骤等）
+            const descriptionMatch = body.match(/### Bug 描述\n\n([\s\S]*?)(?=\n### |\n$)/);
+            const description = descriptionMatch ? descriptionMatch[1].trim() : '';
+            if (!description || description === '' || description.length < 10) {
+              violations.push({
+                type: 'description',
+                message: '❌ **Bug 描述缺失**：请简短描述你遇到的问题'
+              });
+            }
+            
+            const stepsMatch = body.match(/### 复现问题的步骤\n\n([\s\S]*?)(?=\n### |\n$)/);
+            const steps = stepsMatch ? stepsMatch[1].trim() : '';
+            if (!steps || steps === '' || steps.includes('示例步骤')) {
+              violations.push({
+                type: 'steps',
+                message: '❌ **复现步骤缺失**：请提供复现问题的具体步骤'
+              });
+            }
+            
+            const expectedMatch = body.match(/### 预期行为\n\n([\s\S]*?)(?=\n### |\n$)/);
+            const expected = expectedMatch ? expectedMatch[1].trim() : '';
+            if (!expected || expected === '') {
+              violations.push({
+                type: 'expected',
+                message: '❌ **预期行为缺失**：请描述你希望看到的结果'
+              });
+            }
+            
+            const versionMatch = body.match(/### 当前版本号\n\n([\s\S]*?)(?=\n### |\n$)/);
+            const version = versionMatch ? versionMatch[1].trim() : '';
+            if (!version || version === '' || version.includes('0.0.1')) {
+              violations.push({
+                type: 'version',
+                message: '❌ **版本号缺失**：请提供当前使用的具体版本号'
+              });
+            }
+            
+            const androidMatch = body.match(/### Android 版本\n\n([\s\S]*?)(?=\n### |\n$)/);
+            const android = androidMatch ? androidMatch[1].trim() : '';
+            if (!android || android === '' || android.includes('Android 13')) {
+              violations.push({
+                type: 'android',
+                message: '❌ **Android 版本缺失**：请提供系统版本信息'
+              });
+            }
+            
+            // 输出所有违规
+            const violationsJson = JSON.stringify(violations);
+            const shouldClose = violations.length > 0;
+            
+            console.log(`发现 ${violations.length} 项违规`);
+            console.log(violationsJson);
+            
+            // 设置输出
+            core.setOutput('violations', violationsJson);
+            core.setOutput('should_close', shouldClose.toString());
+            core.setOutput('violation_count', violations.length.toString());
+            
+            // 如果没有违规，发送感谢
+            if (!shouldClose) {
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: '✅ 感谢您提交完整的 Bug 报告（包含日志）！我们会尽快处理。'
+                body: '✅ **完美通过检查**！感谢您认真填写 Bug 报告，我们会尽快处理。'
               });
             }
       
-      # 检查是否选择了旧版本（独立检查，只针对bug报告）
-      - if: contains(github.event.issue.body, '我正在使用旧版本')
-        name: Close Issue (old version)
-        uses: actions-cool/issues-helper@v3
+      # 第二步：如果有违规，统一处理
+      - name: Process violations
+        if: steps.collect-violations.outputs.should_close == 'true'
+        uses: actions/github-script@v6
         with:
-          actions: 'create-comment,close-issue,add-labels'
-          token: ${{ secrets.GITHUB_TOKEN }}
-          issue-number: ${{ github.event.issue.number }}
-          labels: '使用旧版本'
-          close-reason: 'not_planned'
-          body: |
-            ⚠️ **无效的 Bug 报告 - 使用旧版本**
+          github-token: ${{ secrets.ISSUE_CHECKER_PAT }}
+          script: |
+            const violations = JSON.parse('${{ steps.collect-violations.outputs.violations }}');
+            const violationCount = '${{ steps.collect-violations.outputs.violation_count }}';
             
-            您选择了"我正在使用旧版本"，但本项目**不为旧版本提供维护支持**。
+            // 构建回复内容
+            let commentBody = '## 🚫 **Bug 报告无效 - 检测到多项违规**\n\n';
+            commentBody += `共发现 **${violationCount}** 项问题：\n\n`;
             
-            请先更新到[最新 Alpha 版本](https://github.com/Colorful-glassblock/bvcn/releases)，如果问题依然存在再重新提交。
+            // 列出所有违规
+            violations.forEach((v, index) => {
+              commentBody += `${index + 1}. ${v.message}\n`;
+            });
+            
+            // 添加总结
+            commentBody += '\n---\n';
+            commentBody += '### 📋 **请修正以下问题后重新提交**：\n';
+            
+            // 根据违规类型给出具体建议
+            const hasTemplateIssue = violations.some(v => ['template', 'checkbox_first_five', 'checkbox_last'].includes(v.type));
+            const hasLogsIssue = violations.some(v => v.type === 'logs');
+            const hasFieldsIssue = violations.some(v => ['description', 'steps', 'expected', 'version', 'android'].includes(v.type));
+            
+            if (hasTemplateIssue) {
+              commentBody += '- 请**仔细阅读**模板说明，正确勾选所有必要复选框\n';
+            }
+            if (hasLogsIssue) {
+              commentBody += '- 请**提供日志**（设置 > 更多设置 > 查看日志）\n';
+            }
+            if (hasFieldsIssue) {
+              commentBody += '- 请**完整填写**所有必填字段（Bug描述、复现步骤、版本号等）\n';
+            }
+            if (violations.some(v => v.type === 'old_version')) {
+              commentBody += '- 请**更新到最新版本**后再提交\n';
+            }
+            
+            commentBody += '\n🔄 **此 Issue 已被自动关闭**';
+            
+            // 添加标签（根据违规类型）
+            const labels = ['无效'];
+            if (violations.some(v => v.type === 'logs')) labels.push('缺少日志');
+            if (violations.some(v => v.type === 'old_version')) labels.push('使用旧版本');
+            if (violations.some(v => v.type === 'checkbox_last')) labels.push('未认真阅读');
+            
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: labels
+            });
+            
+            // 发送评论
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+            
+            // 关闭 Issue
+            await github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              state_reason: 'not_planned'
+            });
+            
+            // 工作流标记失败
+            core.setFailed(`发现 ${violationCount} 项违规，Issue 已关闭`);
