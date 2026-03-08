@@ -2,6 +2,7 @@
 name: Bug 报告
 description: 创建 Bug 报告以帮助开发者改进
 title: "以简单的一段字概括你所遇到的问题"
+labels:["bug"]
 body:
   - type: checkboxes
     id: confirmation
