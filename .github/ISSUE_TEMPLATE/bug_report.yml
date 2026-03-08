@@ -68,8 +68,8 @@ body:
       description: |
         ![GitHub Release Pre-Release](https://img.shields.io/endpoint?url=https%3A%2F%2Fbadge.versions.bv.aaa1115910.dev%2Fgithub%3Fprerelease%3Dtrue)
       options:
-        - '我正在使用旧版本'
-        - '已更新到当前最新 Alpha 版'
+        - '我正在使用旧版本（不包括Legacy Support For Android5）'
+        - '已更新到当前最新 Alpha 版或者Legacy Support For Android5'
         
   - type: input
     id: app-version
