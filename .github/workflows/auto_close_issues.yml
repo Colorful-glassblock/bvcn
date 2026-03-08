@@ -67,8 +67,7 @@ jobs:
               });
             }
             
-            // 2. 检查复选框 - **修复版本**
-            // 匹配所有复选框，包括最后的文字游戏项
+            // 2. 检查复选框
             const checkboxLines = body.split('\n').filter(line => line.trim().startsWith('- [') || line.trim().startsWith('- [x]'));
             console.log(`找到 ${checkboxLines.length} 个复选框行`);
             
@@ -97,7 +96,8 @@ jobs:
                   const isTrickQuestion = text.includes('绝非未曾意识到') || 
                                          text.includes('并非没有不敷衍') ||
                                          text.includes('无法否认') ||
-                                         text.includes('不取消全部勾选');
+                                         text.includes('不取消全部勾选') ||
+                                         text.includes('不应该不被关闭');
                   
                   if (isTrickQuestion) {
                     if (isChecked) {
@@ -158,30 +158,67 @@ jobs:
               });
             }
             
-            // 8. 检查版本号
+            // 8. 检查版本号 - 支持 r114 格式
             const version = extractField(/### 当前版本号\n\n([\s\S]*?)(?=\n### |\n$)/);
-            if (!version || version === '' || version.includes('0.0.1') || version.length < 5 || version === '1') {
+            // 版本号有效格式：r114、r29、1.2.3、v1.2.3、或任何长度>=2的非默认内容
+            const isValidVersion = version && 
+                                   version !== '' && 
+                                   !version.includes('0.0.1') &&  // 不是默认值
+                                   !version.includes('r29') &&    // 排除示例
+                                   version !== '1' &&             // 不是无意义的1
+                                   version.length >= 2 &&         // 至少2个字符
+                                   (
+                                     version.match(/^r\d+$/i) ||           // r114, r29
+                                     version.match(/^\d+\.\d+\.\d+/) ||    // 1.2.3
+                                     version.match(/^v?\d+\.\d+\.\d+/) ||  // v1.2.3
+                                     version.length > 3                    // 其他有效格式（如 r114-test）
+                                   );
+            
+            if (!isValidVersion) {
               violations.push({
                 type: '版本号',
-                message: '❌ **版本号无效**：请提供具体的版本号（如 r29 或 0.0.1.r29...）'
+                message: '❌ **版本号无效**：请提供具体的版本号（如 r114、r29、1.2.3 等）'
               });
             }
             
-            // 9. 检查 Android 版本
+            // 9. 检查 Android 版本 - 支持直接填数字
             const android = extractField(/### Android 版本\n\n([\s\S]*?)(?=\n### |\n$)/);
-            if (!android || android === '' || android.includes('Android 13') || android.length < 4 || android === '1' || android === '安卓') {
+            // Android版本有效格式：14、Android 14、14.0、14.0.0 等
+            const isValidAndroid = android && 
+                                   android !== '' && 
+                                   !android.includes('Android 13') &&  // 不是默认值
+                                   !android.includes('安卓') &&        // 不是敷衍
+                                   android !== '1' &&                  // 不是无意义的1
+                                   android.length >= 1 &&              // 至少1个字符
+                                   (
+                                     android.match(/^\d+$/) ||                 // 纯数字：14
+                                     android.match(/^Android\s*\d+/i) ||       // Android 14
+                                     android.match(/^\d+\.\d+$/) ||            // 14.0
+                                     android.match(/^\d+\.\d+\.\d+$/) ||       // 14.0.0
+                                     (android.length >= 2 && android !== 'No response')  // 其他有效格式
+                                   );
+            
+            if (!isValidAndroid) {
               violations.push({
                 type: 'Android 版本',
-                message: '❌ **Android 版本无效**：请提供具体的系统版本（如 Android 13、Android 14）'
+                message: '❌ **Android 版本无效**：请提供具体的系统版本（如 14、Android 14、14.0）'
               });
             }
             
             // 10. 检查设备信息
             const device = extractField(/### 设备厂商及型号\n\n([\s\S]*?)(?=\n### |\n$)/);
-            if (!device || device === '' || device.includes('Sony') || device.length < 5 || device === '手机' || device === 'No response') {
+            const isValidDevice = device && 
+                                  device !== '' && 
+                                  !device.includes('Sony') &&      // 不是默认示例
+                                  !device.includes('BRAVIA') &&    // 不是默认示例
+                                  device !== '手机' &&              // 不是敷衍
+                                  device !== 'No response' &&       // 不是未填写
+                                  device.length >= 5;               // 至少5个字符
+            
+            if (!isValidDevice) {
               violations.push({
                 type: '设备信息',
-                message: '❌ **设备信息缺失**：请提供具体的设备厂商和型号'
+                message: '❌ **设备信息缺失**：请提供具体的设备厂商和型号（如 Xiaomi 14 Pro、Samsung S24）'
               });
             }
             
@@ -201,6 +238,17 @@ jobs:
                 type: '日志',
                 message: '❌ **缺少日志**：没有日志如同闭眼开车，无法诊断问题。请从「设置 > 更多设置 > 查看日志」中获取日志'
               });
+            }
+            
+            // 12. 检查视频 ID（可选，但如果有应该格式正确）
+            const video = extractField(/### 遇到问题的视频 avid 或 bvid\n\n([\s\S]*?)(?=\n### |\n$)/);
+            if (video && video !== '' && !video.includes('No response')) {
+              if (!video.match(/^(av|BV)\w+/)) {
+                violations.push({
+                  type: '视频ID',
+                  message: '⚠️ **视频ID格式错误**：请使用正确的 av 号（如 av170001）或 BV 号'
+                });
+              }
             }
             
             // 输出所有违规
