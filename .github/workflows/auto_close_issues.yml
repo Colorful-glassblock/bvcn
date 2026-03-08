@@ -1,109 +1,118 @@
-name: Check Issues
+name: Check Bug Reports
 
 on:
   issues:
     types: [opened, edited]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
 jobs:
-  check:
+  check-bug-report:
+    # 只检查 Bug 报告模板
+    if: contains(github.event.issue.labels.*.name, 'bug') || contains(github.event.issue.body, 'Bug 报告')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       
-      - name: Check issue content
-        id: check
+      - name: Validate bug report
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.ISSUE_CHECKER_PAT }}
           script: |
             const body = context.payload.issue.body;
             const title = context.payload.issue.title;
+            let closeReason = null;
+            let commentBody = '';
             
-            // 检查标题是否还是默认内容
+            // 1. 检查标题
             if (title.includes('以简单的一段字概括')) {
-              core.setFailed('标题未修改');
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: '❌ 请修改标题，不要使用默认内容！'
-              });
-              
-              await github.rest.issues.update({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'closed',
-                state_reason: 'not_planned'
-              });
-              
-              return;
+              closeReason = '标题未修改，仍使用默认内容';
+              commentBody = '❌ **无效的 Bug 报告**\n\n请修改标题，使用简洁明了的问题描述，不要保留默认内容。';
             }
             
-            // 检查复选框状态
-            const checkboxPattern = /-\s\[\s([x\s])\s\]\s(.+)/g;
-            const checkboxes = [];
-            let match;
-            
-            while ((match = checkboxPattern.exec(body)) !== null) {
-              checkboxes.push({
-                checked: match[1].toLowerCase() === 'x',
-                text: match[2]
-              });
-            }
-            
-            // 分析复选框状态
-            if (checkboxes.length >= 6) {
-              const firstFive = checkboxes.slice(0, 5);
-              const lastOne = checkboxes[5];
+            // 2. 检查复选框（如果标题已触发关闭，可以不检查，但为了完整还是检查）
+            if (!closeReason) {
+              const checkboxPattern = /-\s\[\s([x\s])\s\]\s(.+)/g;
+              const checkboxes = [];
+              let match;
               
-              // 检查前5个是否都勾选
-              const allFirstFiveChecked = firstFive.every(cb => cb.checked);
-              // 检查最后一个是否未勾选
-              const lastNotChecked = !lastOne.checked;
-              
-              if (allFirstFiveChecked && lastNotChecked) {
-                // 完美通过！感谢用户
-                await github.rest.issues.createComment({
-                  issue_number: context.issue.number,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body: '✅ 感谢您认真阅读并填写了 issue 模板！我们会尽快处理。'
-                });
-              } else {
-                // 检查失败
-                let errorMsg = '❌ 请重新检查复选框：\n';
-                if (!allFirstFiveChecked) {
-                  errorMsg += '- 前5项必须全部勾选（确认您已阅读并同意）\n';
-                }
-                if (!lastNotChecked) {
-                  errorMsg += '- 最后一项**不应该**被勾选（如果您勾了，说明您没有认真阅读）\n';
-                }
-                
-                await github.rest.issues.createComment({
-                  issue_number: context.issue.number,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body: errorMsg + '\n请根据要求修改后重新提交。'
-                });
-                
-                // 关闭 issue
-                await github.rest.issues.update({
-                  issue_number: context.issue.number,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  state: 'closed',
-                  state_reason: 'not_planned'
+              while ((match = checkboxPattern.exec(body)) !== null) {
+                checkboxes.push({
+                  checked: match[1].toLowerCase() === 'x',
+                  text: match[2]
                 });
               }
-            } else {
-              // 复选框数量不足
+              
+              if (checkboxes.length >= 6) {
+                const firstFive = checkboxes.slice(0, 5);
+                const lastOne = checkboxes[5];
+                
+                const allFirstFiveChecked = firstFive.every(cb => cb.checked);
+                const lastNotChecked = !lastOne.checked;
+                
+                if (!allFirstFiveChecked) {
+                  closeReason = '前5项必选复选框未全部勾选';
+                  commentBody = '❌ **无效的 Bug 报告**\n\n前5项必须全部勾选，确认您已阅读并同意相关条款。';
+                } else if (!lastNotChecked) {
+                  closeReason = '误勾选了最后一项（筛选项）';
+                  commentBody = '❌ **无效的 Bug 报告 - 您没有认真阅读**\n\n' +
+                               '最后一项**不应该**被勾选。如果您勾了，说明您：\n' +
+                               '- 没有仔细阅读模板内容\n' +
+                               '- 只是机械地全选所有复选框\n\n' +
+                               '请重新阅读模板说明后再次提交。';
+                }
+              } else {
+                closeReason = '未使用正确的模板或模板不完整';
+                commentBody = '❌ **无效的 Bug 报告**\n\n请使用完整的 Bug 报告模板提交。';
+              }
+            }
+            
+            // 3. 检查日志是否填写（关键新增）
+            if (!closeReason) {
+              const logsSection = body.match(/### 相关日志\n\n([\s\S]*?)(?=\n### |\n$)/);
+              const hasLogs = logsSection && logsSection[1] && 
+                             logsSection[1].trim() !== '' && 
+                             !logsSection[1].includes('你可以在 `设置` 中查看') &&  // 检查是否还是默认提示
+                             logsSection[1].length > 10;  // 至少有一些内容
+              
+              if (!hasLogs) {
+                closeReason = '未提供相关日志';
+                commentBody = '❌ **无效的 Bug 报告 - 缺少日志**\n\n' +
+                             '> 没有日志的情况下诊断错误，如同闭着眼开车\n\n' +
+                             '请提供相关日志：\n' +
+                             '- 你可以在 `设置` > `更多设置` > `查看日志` 中查看已保存的日志\n' +
+                             '- 扫码即可下载获取（在同一网络环境下）\n' +
+                             '- 在日志列表中可找到自动生成的崩溃日志\n\n' +
+                             '**没有日志的 Bug 报告无法被诊断和处理**，请补充日志后重新提交。';
+              }
+            }
+            
+            // 4. 如果需要关闭，执行关闭操作
+            if (closeReason) {
+              console.log(`关闭原因: ${closeReason}`);
+              
+              // 添加标签
+              await github.rest.issues.addLabels({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: ['无效', 'bug报告不合格']
+              });
+              
+              // 发送关闭评论
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: '❌ 请使用正确的 issue 模板提交。'
+                body: commentBody + '\n\n---\n🔄 此 Bug 报告已被自动关闭，请按要求重新提交。'
               });
               
+              // 关闭 Issue
               await github.rest.issues.update({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
@@ -111,9 +120,20 @@ jobs:
                 state: 'closed',
                 state_reason: 'not_planned'
               });
+              
+              // 抛出错误让工作流显示失败状态
+              core.setFailed(`Bug 报告无效: ${closeReason}`);
+            } else {
+              // 通过：发送感谢评论
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '✅ 感谢您提交完整的 Bug 报告（包含日志）！我们会尽快处理。'
+              });
             }
-            
-      # 检查是否选择了旧版本
+      
+      # 检查是否选择了旧版本（独立检查，只针对bug报告）
       - if: contains(github.event.issue.body, '我正在使用旧版本')
         name: Close Issue (old version)
         uses: actions-cool/issues-helper@v3
@@ -124,8 +144,8 @@ jobs:
           labels: '使用旧版本'
           close-reason: 'not_planned'
           body: |
-            ⚠️ 您选择了"我正在使用旧版本"
+            ⚠️ **无效的 Bug 报告 - 使用旧版本**
             
-            请先尝试使用当前最新 alpha 版本，如果问题依然存在再重新提交 issue。
+            您选择了"我正在使用旧版本"，但本项目**不为旧版本提供维护支持**。
             
-            ![GitHub Release Pre-Release](https://img.shields.io/endpoint?url=https%3A%2F%2Fbadge.versions.bv.aaa1115910.dev%2Fgithub%3Fprerelease%3Dtrue)
+            请先更新到[最新 Alpha 版本](https://github.com/Colorful-glassblock/bvcn/releases)，如果问题依然存在再重新提交。
