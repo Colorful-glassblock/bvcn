@@ -18,6 +18,7 @@ import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.OkHttpUtil
 import dev.aaa1115910.bv.player.VideoPlayerOptions
 import dev.aaa1115910.bv.util.formatHourMinSec
+import java.util.concurrent.TimeUnit
 
 @OptIn(UnstableApi::class)
 class ExoMediaPlayer(
@@ -28,11 +29,15 @@ class ExoMediaPlayer(
     protected var mMediaSource: MediaSource? = null
 
     @OptIn(UnstableApi::class)
-    private val dataSourceFactory =
-        OkHttpDataSource.Factory(OkHttpUtil.generateCustomSslOkHttpClient(context)).apply {
-            options.userAgent?.let { setUserAgent(it) }
-            options.referer?.let { setDefaultRequestProperties(mapOf("referer" to it)) }
-        }
+    private val dataSourceFactory = OkHttpDataSource.Factory(
+        OkHttpUtil.generateCustomSslOkHttpClient(context).newBuilder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+    ).apply {
+        options.userAgent?.let { setUserAgent(it) }
+        options.referer?.let { setDefaultRequestProperties(mapOf("referer" to it)) }
+    }
 
     init {
         initPlayer()
