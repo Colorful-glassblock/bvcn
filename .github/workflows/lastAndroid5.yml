@@ -51,7 +51,7 @@ jobs:
           base64 -d -i encoded_key > key.jks
 
       - name: Build apk
-        run: ./gradlew assembleDefaultAlpha assembleDefaultDebug
+        run: ./gradlew assembleDefaultAlpha assembleDefaultDebug --stacktrace
 
       - name: Read alpha apk output metadata
         id: apk-meta-alpha
