@@ -219,6 +219,8 @@
     <string name="settings_other_alpha_title">Alpha 版更新</string>
     <string name="settings_other_ffmpeg_audio_renderer_text">尝试使用 FFmpeg 播放硬解不兼容的音频</string>
     <string name="settings_other_ffmpeg_audio_renderer_title">启用音频软解</string>
+    <string name="settings_other_software_video_renderer_title">启用视频软解</string>
+    <string name="settings_other_software_video_renderer_text">使用软件解码器播放视频，可能解决硬解兼容性问题</string>
     <string name="settings_other_firebase_text">这将帮助开发者更快地发现与解决大部分问题</string>
     <string name="settings_other_firebase_title">发送错误日志</string>
     <string name="settings_other_fps_text">在屏幕左上角显示 FPS，这需要重启 App</string>

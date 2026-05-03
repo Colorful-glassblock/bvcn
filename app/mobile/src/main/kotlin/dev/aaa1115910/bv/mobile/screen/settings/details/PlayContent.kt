@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.aaa1115910.bv.mobile.component.preferences.items.radioPreference
+import dev.aaa1115910.bv.mobile.component.preferences.items.switchPreference
 import dev.aaa1115910.bv.mobile.component.preferences.preferenceGroups
 import dev.aaa1115910.bv.mobile.theme.BVMobileTheme
 import dev.aaa1115910.bv.player.entity.Audio
@@ -50,6 +51,13 @@ fun PlayContent(
                     prefReq = PrefKeys.prefDefaultAudioRequest,
                     values = Audio.entries.associate { it.code to it.getDisplayName(context) }
                         .toSortedMap { a, b -> a.compareTo(b) }
+                )
+            },
+            "解码器" to {
+                switchPreference(
+                    title = "启用视频软解",
+                    subtitle = "使用软件解码器播放视频，可能解决硬解兼容性问题",
+                    prefReq = PrefKeys.prefEnableSoftwareVideoRendererRequest
                 )
             }
         )
