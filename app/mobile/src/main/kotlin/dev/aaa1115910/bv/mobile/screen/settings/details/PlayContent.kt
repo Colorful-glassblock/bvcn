@@ -56,8 +56,9 @@ fun PlayContent(
             "解码器" to {
                 switchPreference(
                     title = "启用视频软解",
-                    subtitle = "使用软件解码器播放视频，可能解决硬解兼容性问题",
-                    prefReq = PrefKeys.prefEnableSoftwareVideoRendererRequest
+                    summary = "使用软件解码器播放视频，可能解决硬解兼容性问题",
+                    prefReq = PrefKeys.prefEnableSoftwareVideoRendererRequest,
+                    onCheckedChange = { true }
                 )
             }
         )
