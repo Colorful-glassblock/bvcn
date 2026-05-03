@@ -300,6 +300,17 @@ object Prefs {
             )
         }
 
+    var enableSoftwareVideoRenderer: Boolean
+        get() = runBlocking {
+            dsm.getPreferenceFlow(PrefKeys.prefEnableSoftwareVideoRendererRequest).first()
+        }
+        set(value) = runBlocking {
+            dsm.editPreference(
+                PrefKeys.prefEnableSoftwareVideoRenderer,
+                value
+            )
+        }
+
     var blacklistUser: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefBlacklistUserRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefBlacklistUserKey, value) }
@@ -362,6 +373,7 @@ object PrefKeys {
     val prefPreferOfficialCdn = booleanPreferencesKey("prefer_official_cdn")
     val prefDefaultDanmakuMask = booleanPreferencesKey("prefer_enable_webmark")
     val prefEnableFfmpegAudioRenderer = booleanPreferencesKey("enable_ffmpeg_audio_renderer")
+    val prefEnableSoftwareVideoRenderer = booleanPreferencesKey("enable_software_video_renderer")
     val prefBlacklistUserKey = booleanPreferencesKey("blacklist_user")
     val prefThemeTypeKey = intPreferencesKey("theme_type")
     val prefPlayModeKey = intPreferencesKey("play_mode")
@@ -420,6 +432,7 @@ object PrefKeys {
     val prefPreferOfficialCdnRequest = PreferenceRequest(prefPreferOfficialCdn, false)
     val prefDefaultDanmakuMaskRequest = PreferenceRequest(prefDefaultDanmakuMask, false)
     val prefEnableFfmpegEndererRequest = PreferenceRequest(prefEnableFfmpegAudioRenderer, false)
+    val prefEnableSoftwareVideoRendererRequest = PreferenceRequest(prefEnableSoftwareVideoRenderer, false)
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Sequential.ordinal)
