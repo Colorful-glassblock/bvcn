@@ -399,12 +399,15 @@ class VideoPlayerV3ViewModel(
         logger.fInfo { "Select audio: $audioItem" }
         addLogs("音频编码：${(Audio.fromCode(audioItem?.codecId ?: 0))?.getDisplayName(BVApp.context) ?: "未知"}")
 
-        withContext(Dispatchers.Main) {
-            currentVideoHeight = videoItem?.height ?: 0
-            currentVideoWidth = videoItem?.width ?: 0
-            logger.info { "Video url: $videoUrl" }
-            logger.info { "Audio url: $audioUrl" }
+        currentVideoHeight = videoItem?.height ?: 0
+        currentVideoWidth = videoItem?.width ?: 0
+        logger.info { "Video url: $videoUrl" }
+        logger.info { "Audio url: $audioUrl" }
+        // 将 playUrl 移到 IO 线程，避免主线程阻塞
+        withContext(Dispatchers.IO) {
             videoPlayer!!.playUrl(videoUrl, audioUrl)
+        }
+        withContext(Dispatchers.Main) {
             videoPlayer!!.prepare()
             showBuffering = true
         }
