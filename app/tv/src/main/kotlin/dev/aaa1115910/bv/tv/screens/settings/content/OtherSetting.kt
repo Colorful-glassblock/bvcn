@@ -38,6 +38,7 @@ fun OtherSetting(
     var showFps by remember { mutableStateOf(Prefs.showFps) }
     var updateAlpha by remember { mutableStateOf(Prefs.updateAlpha) }
     var enableFfmpegAudioRenderer by remember { mutableStateOf(Prefs.enableFfmpegAudioRenderer) }
+    var enableSoftwareVideoRenderer by remember { mutableStateOf(Prefs.enableSoftwareVideoRenderer) }
 
     Column(
         modifier = modifier.fillMaxSize(),
@@ -117,6 +118,17 @@ fun OtherSetting(
                     onCheckedChange = {
                         enableFfmpegAudioRenderer = it
                         Prefs.enableFfmpegAudioRenderer = it
+                    }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = stringResource(R.string.settings_other_software_video_renderer_title),
+                    supportText = stringResource(R.string.settings_other_software_video_renderer_text),
+                    checked = enableSoftwareVideoRenderer,
+                    onCheckedChange = {
+                        enableSoftwareVideoRenderer = it
+                        Prefs.enableSoftwareVideoRenderer = it
                     }
                 )
             }

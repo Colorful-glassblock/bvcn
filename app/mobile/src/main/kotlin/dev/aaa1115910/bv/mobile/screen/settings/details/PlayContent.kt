@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalContext
 import de.schnettler.datastore.manager.DataStoreManager
 import dev.aaa1115910.bv.dataStore
 import dev.aaa1115910.bv.mobile.component.preferences.RadioPreferenceItem
+import dev.aaa1115910.bv.mobile.component.preferences.SwitchPreferenceItem
 import dev.aaa1115910.bv.mobile.component.preferences.getOrDefault
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.Resolution
@@ -47,6 +48,11 @@ fun PlayContent(
             prefReq = PrefKeys.prefDefaultAudioRequest,
             summary = Audio.fromCode(prefs.getOrDefault(PrefKeys.prefDefaultAudioRequest))
                 ?.getDisplayName(context) ?: ""
+        )
+        SwitchPreferenceItem(
+            title = "启用视频软解",
+            summary = "使用软件解码器播放视频，可能解决硬解兼容性问题",
+            prefReq = PrefKeys.prefEnableSoftwareVideoRendererRequest
         )
     }
 }

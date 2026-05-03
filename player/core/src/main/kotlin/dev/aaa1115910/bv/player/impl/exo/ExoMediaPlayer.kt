@@ -52,6 +52,10 @@ class ExoMediaPlayer(
                     false -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
                 }
             )
+            // 启用软解时，强制使用软件视频解码器
+            if (options.enableSoftwareVideoRenderer) {
+                setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+            }
         }
         mPlayer = ExoPlayer
             .Builder(context)
