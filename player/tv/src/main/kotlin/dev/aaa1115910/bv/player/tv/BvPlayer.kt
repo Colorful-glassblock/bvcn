@@ -100,7 +100,8 @@ fun BvPlayer(
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
-    onPlayModeChange: (PlayMode) -> Unit
+    onPlayModeChange: (PlayMode) -> Unit,
+    onUpdateDanmakuForPosition: (suspend (Long) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger("BvPlayer")
@@ -156,6 +157,12 @@ fun BvPlayer(
         currentPosition = videoPlayer.currentPosition.coerceAtLeast(0L)
         duration = videoPlayer.duration.coerceAtLeast(0L)
         bufferedPercentage = videoPlayer.bufferedPercentage
+        // 更新弹幕分段
+        onUpdateDanmakuForPosition?.let { updateFunc ->
+            scope.launch {
+                updateFunc(currentPosition)
+            }
+        }
     }
 
     val initDanmakuConfig: () -> Unit = {
