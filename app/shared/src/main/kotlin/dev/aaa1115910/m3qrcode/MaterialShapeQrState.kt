@@ -301,6 +301,17 @@ internal data class MaterialShapeQrState(
     }
 
 
+    // 缓存 Paint 对象，避免重复创建
+    private val paintCache = mutableMapOf<Int, Paint>()
+
+    private fun getOrCreatePaint(color: Int): Paint {
+        return paintCache.getOrPut(color) {
+            Paint().apply {
+                colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
+            }
+        }
+    }
+
     fun createRendererForShape(
         x: Int,
         y: Int,
@@ -317,8 +328,7 @@ internal data class MaterialShapeQrState(
             ((x + width) * moduleSize).toFloat(),
             ((y + height) * moduleSize).toFloat()
         )
-        val paint = Paint()
-        paint.colorFilter = PorterDuffColorFilter(foregroundColor, PorterDuff.Mode.SRC_IN)
+        val paint = getOrCreatePaint(foregroundColor)
         val materialShapeRenderer = MaterialShapeRenderer(vectorDrawable, rectF, paint)
         materialShapeRenderer.startDelay = calculateStartDelay(x, y, width, height)
         rendererConfigs(materialShapeRenderer)
