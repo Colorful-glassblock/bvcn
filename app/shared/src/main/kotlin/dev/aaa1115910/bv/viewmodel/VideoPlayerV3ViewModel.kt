@@ -409,11 +409,17 @@ class VideoPlayerV3ViewModel(
         }
     }
 
+    // 弹幕分段管理
+    private var danmakuSegments: Map<Long, List<DanmakuItemData>> = emptyMap()
+    private var danmakuSegmentDuration = 60_000L // 每段60秒
+    private var lastLoadedSegment = -1L
+
     suspend fun loadDanmaku(cid: Long) {
         runCatching {
             val danmakuXmlData = BiliHttpApi.getDanmakuXml(cid = cid, sessData = Prefs.sessData)
 
-            val danmakuItemDataList = danmakuXmlData.data.map {
+            // 转换为 DanmakuItemData 列表
+            val allDanmaku = danmakuXmlData.data.map {
                 DanmakuItemData(
                     danmakuId = it.dmid,
                     position = (it.time * 1000).toLong(),
@@ -427,14 +433,53 @@ class VideoPlayerV3ViewModel(
                     textColor = Color(it.color).toArgb()
                 )
             }
-            danmakuData.swapListWithMainContext(danmakuItemDataList)
-            danmakuPlayer?.updateData(danmakuData)
+
+            // 按时间分段存储
+            danmakuSegments = allDanmaku.groupBy { it.position / danmakuSegmentDuration }
+            lastLoadedSegment = -1
+
+            // 加载初始段（前3分钟的弹幕）
+            loadDanmakuSegment(0, 3)
+
+            addLogs("已加载 ${allDanmaku.size} 条弹幕（${danmakuSegments.size} 段）")
+            logger.fInfo { "Load danmaku success, total=${allDanmaku.size}, segments=${danmakuSegments.size}" }
         }.onFailure {
             addLogs("加载弹幕失败：${it.localizedMessage}")
             logger.fWarn { "Load danmaku filed: ${it.stackTraceToString()}" }
-        }.onSuccess {
-            addLogs("已加载 ${danmakuData.size} 条弹幕")
-            logger.fInfo { "Load danmaku success, size=${danmakuData.size}" }
+        }
+    }
+
+    /**
+     * 加载指定范围的弹幕段
+     * @param startSegment 起始段索引
+     * @param segmentCount 加载段数
+     */
+    private suspend fun loadDanmakuSegment(startSegment: Long, segmentCount: Int) {
+        val endSegment = startSegment + segmentCount
+        val newDanmaku = mutableListOf<DanmakuItemData>()
+
+        for (segment in startSegment until endSegment) {
+            danmakuSegments[segment]?.let { newDanmaku.addAll(it) }
+        }
+
+        if (newDanmaku.isNotEmpty()) {
+            danmakuData.swapListWithMainContext(newDanmaku)
+            danmakuPlayer?.updateData(danmakuData)
+            lastLoadedSegment = endSegment - 1
+            logger.fInfo { "Loaded danmaku segments $startSegment to ${endSegment - 1}, count=${newDanmaku.size}" }
+        }
+    }
+
+    /**
+     * 根据当前播放位置更新弹幕
+     * @param currentPosition 当前播放位置（毫秒）
+     */
+    suspend fun updateDanmakuForPosition(currentPosition: Long) {
+        val currentSegment = currentPosition / danmakuSegmentDuration
+
+        // 如果当前位置超出已加载范围，加载新段
+        if (currentSegment > lastLoadedSegment - 1) {
+            loadDanmakuSegment(currentSegment, 3)
         }
     }
 

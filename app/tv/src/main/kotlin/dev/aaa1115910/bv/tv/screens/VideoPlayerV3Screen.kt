@@ -215,6 +215,7 @@ fun VideoPlayerV3Screen(
                 Prefs.defaultSubtitleBottomPadding = padding
                 playerViewModel.currentSubtitleBottomPadding = padding
             },
+            onUpdateDanmakuForPosition = playerViewModel::updateDanmakuForPosition
         )
     }
 }
