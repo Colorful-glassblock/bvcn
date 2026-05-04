@@ -673,7 +673,18 @@ internal fun rememberMaterialShapeQrState(
         colorMap[".dot3"] = backgroundDotColor3
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(colorScheme) {
+        // 清理旧的 Drawable 引用
+        arrayOf1x1Shapes.clear()
+        arrayOf1x1SemiCircleShapes.clear()
+        arrayOf2x2Shapes.clear()
+        arrayOf3x3Shapes.clear()
+        arrayOf7x7Shapes.clear()
+        arrayOfHorizontalBarShapes.clear()
+        arrayOfHorizontalHalfCapsuleBarShapes.clear()
+        arrayOfVerticalBarShapes.clear()
+        arrayOfFinderPatternCenterShapes.clear()
+
         loadDrawables()
         applyLottieDynamicColor()
     }
