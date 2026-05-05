@@ -29,8 +29,8 @@ import java.io.File
 
 object GithubApi {
     private var endPoint = "api.github.com"
-    private const val OWNER = "aaa1115910"
-    private const val REPO = "bv"
+    private const val OWNER = "Colorful-glassblock"
+    private const val REPO = "bvcn"
     private lateinit var client: HttpClient
     private val json = Json {
         coerceInputValues = true
