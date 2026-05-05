@@ -33,6 +33,16 @@ object GithubApi {
     private const val REPO = "bvcn"
     // 当前分支名称，用于过滤对应分支的 release
     private const val CURRENT_BRANCH = "lastAndroid5"
+    // 电视端特殊处理：如果在 TV 上运行，允许获取所有 release（因为 TV 可能需要更多版本）
+    private val isTvDevice: Boolean
+        get() {
+            return try {
+                val uiModeManager = LocalContext.current.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+                uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
+            } catch (e: Exception) {
+                false
+            }
+    
     private lateinit var client: HttpClient
     private val json = Json {
         coerceInputValues = true
@@ -77,7 +87,11 @@ object GithubApi {
         }.bodyAsText()
         checkErrorMessage(response)
         val allReleases = json.decodeFromString<List<Release>>(response)
-        // 过滤只匹配当前分支的 release
+        // 电视端特殊处理：如果在 TV 上运行，允许获取所有 release
+        if (isTvDevice) {
+            return allReleases
+        }
+        // 其他设备：过滤只匹配当前分支的 release
         return allReleases.filter { it.targetCommitish == CURRENT_BRANCH }
     }
 
