@@ -29,8 +29,10 @@ import java.io.File
 
 object GithubApi {
     private var endPoint = "api.github.com"
-    private const val OWNER = "aaa1115910"
-    private const val REPO = "bv"
+    private const val OWNER = "Colorful-glassblock"
+    private const val REPO = "bvcn"
+    // 当前分支名称，用于过滤对应分支的 release
+    private const val CURRENT_BRANCH = "lastAndroid5"
     private lateinit var client: HttpClient
     private val json = Json {
         coerceInputValues = true
@@ -74,16 +76,18 @@ object GithubApi {
             parameter("page", page)
         }.bodyAsText()
         checkErrorMessage(response)
-        return json.decodeFromString<List<Release>>(response)
+        val allReleases = json.decodeFromString<List<Release>>(response)
+        // 过滤只匹配当前分支的 release
+        return allReleases.filter { it.targetCommitish == CURRENT_BRANCH }
     }
 
     private suspend fun getLatestRelease(
         owner: String = OWNER,
         repo: String = REPO
     ): Release {
-        val response = client.get("repos/$owner/$repo/releases/latest").bodyAsText()
-        checkErrorMessage(response)
-        return json.decodeFromString<Release>(response)
+        val releases = getReleases(owner = owner, repo = repo, pageSize = 1)
+        return releases.firstOrNull { !it.isPreRelease }
+            ?: throw IllegalStateException("No release found for branch $CURRENT_BRANCH")
     }
 
     suspend fun getLatestPreReleaseBuild(): Release {
@@ -95,7 +99,7 @@ object GithubApi {
             release = releases.firstOrNull { it.isPreRelease }
             page++
         }
-        return release ?: throw IllegalStateException("No pre-release found")
+        return release ?: throw IllegalStateException("No pre-release found for branch $CURRENT_BRANCH")
     }
 
     suspend fun getLatestReleaseBuild(): Release = getLatestRelease()
