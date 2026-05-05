@@ -3,7 +3,6 @@ import java.net.URI
 plugins {
     alias(gradleLibs.plugins.android.library)
     alias(gradleLibs.plugins.compose.compiler)
-    alias(gradleLibs.plugins.firebase.crashlytics)
     alias(gradleLibs.plugins.google.ksp)
     alias(gradleLibs.plugins.google.protobuf)
     alias(gradleLibs.plugins.google.services) apply false
@@ -69,11 +68,6 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -94,7 +88,7 @@ ksp {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(AppConfiguration.jdk))
     }
 }
 
@@ -136,8 +130,8 @@ dependencies {
     api(libs.coil.compose)
     api(libs.coil.gif)
     api(libs.coil.svg)
-    api(libs.firebase.analytics.ktx)
-    api(libs.firebase.crashlytics.ktx)
+    api(libs.firebase.analytics)
+    api(libs.firebase.crashlytics)
     api(libs.geetest.sensebot)
     api(libs.koin.android)
     api(libs.koin.annotations)
@@ -160,10 +154,12 @@ dependencies {
     api(libs.qrcode)
     api(libs.rememberPreference)
     api(libs.slf4j.android.mvysny)
+    api(libs.zxing)
     api(project(mapOf("path" to ":bili-api")))
     api(project(mapOf("path" to ":bili-subtitle")))
     api(project(mapOf("path" to ":player")))
     api(project(mapOf("path" to ":utils")))
+    api(project(mapOf("path" to ":symbols")))
     testImplementation(androidx.room.testing)
     testImplementation(libs.kotlin.test)
     androidTestImplementation(androidx.compose.ui.test.junit4)

@@ -20,6 +20,7 @@ import dev.aaa1115910.bv.entity.PlayerType
 import dev.aaa1115910.bv.entity.ThemeType
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.DanmakuType
+import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoCodec
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -319,9 +320,16 @@ object Prefs {
             ThemeType.entries[dsm.getPreferenceFlow(PrefKeys.prefThemeTypeRequest).first()]
         }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefThemeTypeKey, value.ordinal) }
+
     val themeTypeFlow: Flow<ThemeType>
         get() = dsm.getPreferenceFlow(PrefKeys.prefThemeTypeRequest)
             .transform { ordinal -> emit(ThemeType.entries[ordinal]) }
+
+    var defaultPlayMode: PlayMode
+        get() = runBlocking {
+            PlayMode.entries[dsm.getPreferenceFlow(PrefKeys.prefPlayModeRequest).first()]
+        }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayModeKey, value.ordinal) }
 }
 
 object PrefKeys {
@@ -368,6 +376,7 @@ object PrefKeys {
     val prefEnableSoftwareVideoRenderer = booleanPreferencesKey("enable_software_video_renderer")
     val prefBlacklistUserKey = booleanPreferencesKey("blacklist_user")
     val prefThemeTypeKey = intPreferencesKey("theme_type")
+    val prefPlayModeKey = intPreferencesKey("play_mode")
 
     val prefIsLoginRequest = PreferenceRequest(prefIsLoginKey, false)
     val prefUidRequest = PreferenceRequest(prefUidKey, 0)
@@ -403,7 +412,11 @@ object PrefKeys {
     val prefBuvid3Request = PreferenceRequest(prefBuvid3Key, "")
     val prefPlayerTypeRequest = PreferenceRequest(prefPlayerTypeKey, PlayerType.Media3.ordinal)
     val prefDensityRequest =
-        PreferenceRequest(prefDensityKey, BVApp.context.resources.displayMetrics.widthPixels / 960f)
+        PreferenceRequest(
+            prefDensityKey,
+            runCatching { BVApp.context.resources.displayMetrics.widthPixels / 960f }
+                .getOrDefault(2f)
+        )
 
     @Suppress("KotlinConstantConditions")
     val prefAlphaRequest = PreferenceRequest(prefAlphaKey, BuildConfig.BUILD_TYPE == "alpha")
@@ -422,4 +435,5 @@ object PrefKeys {
     val prefEnableSoftwareVideoRendererRequest = PreferenceRequest(prefEnableSoftwareVideoRenderer, false)
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
+    val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Sequential.ordinal)
 }

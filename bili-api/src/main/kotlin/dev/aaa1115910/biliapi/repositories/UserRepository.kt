@@ -193,6 +193,7 @@ class UserRepository(
                     mid = mid,
                     lastAvid = page.lastAvid,
                     order = order.value,
+                    ts = System.currentTimeMillis(),
                     accessKey = authRepository.accessToken ?: ""
                 ).getResponseData()
                 SpaceVideoData.fromAppSpaceVideoData(appSpaceVideoData)
@@ -282,6 +283,7 @@ class UserRepository(
             ApiType.Web -> {
                 val responseData = BiliHttpApi.getDynamicDetail(
                     id = dynamicId,
+                    features = "itemOpusStyle",
                     sessData = authRepository.sessionData ?: ""
                 ).getResponseData()
                 DynamicItem.fromDynamicItem(responseData.item)

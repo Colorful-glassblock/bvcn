@@ -87,11 +87,15 @@ object GithubApi {
         }.bodyAsText()
         checkErrorMessage(response)
         val allReleases = json.decodeFromString<List<Release>>(response)
+<<<<<<< HEAD
         // 电视端特殊处理：如果在 TV 上运行，允许获取所有 release
         if (isTvDevice) {
             return allReleases
         }
         // 其他设备：过滤只匹配当前分支的 release
+=======
+        // 过滤只匹配当前分支的 release
+>>>>>>> develop
         return allReleases.filter { it.targetCommitish == CURRENT_BRANCH }
     }
 

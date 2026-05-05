@@ -38,10 +38,7 @@ android {
             )
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -50,7 +47,7 @@ android {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(AppConfiguration.jdk))
     }
 }
 
@@ -59,8 +56,8 @@ dependencies {
     implementation(androidx.compose.tv.foundation)
     implementation(androidx.compose.ui)
     implementation(androidx.core.ktx)
-    implementation(libs.firebase.analytics.ktx)
-    implementation(libs.firebase.crashlytics.ktx)
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
     implementation(libs.logging)
     implementation(libs.material)
 }

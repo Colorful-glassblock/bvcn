@@ -1,30 +1,339 @@
-name: Check Issues
+name: Check Bug Reports
 
 on:
   issues:
-    types: [ opened ]
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - if: contains(github.event.issue.title, '以简单的一段字概括' )
-        id: close-invalid-title
-        name: Close Issue (invalid title)
-        uses: actions-cool/issues-helper@v3
-        with:
-          actions: 'add-labels,close-issue'
-          token: ${{ secrets.GITHUB_TOKEN }}
-          issue-number: ${{ github.event.issue.number }}
-          labels: '无效'
-          close-reason: 'not_planned'
+    types: [opened, edited]
 
-      - if: contains(github.event.issue.body, '我正在使用旧版本' )
-        id: close-old-version
-        name: Close Issue (old version)
-        uses: actions-cool/issues-helper@v3
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  check-bug-report:
+    # 只检查 Bug 报告模板
+    if: contains(github.event.issue.labels.*.name, 'bug') || contains(github.event.issue.body, 'Bug 报告')
+    runs-on: ubuntu-latest
+    outputs:
+      violations: ${{ steps.collect-violations.outputs.violations }}
+      should_close: ${{ steps.collect-violations.outputs.should_close }}
+    steps:
+      - uses: actions/checkout@v3
         with:
-          actions: 'create-comment,close-issue'
-          token: ${{ secrets.GITHUB_TOKEN }}
-          issue-number: ${{ github.event.issue.number }}
-          close-reason: 'not_planned'
-          body: 请先尝试使用当前最新 alpha 版本，如果问题依然存在再提交 issue
+          persist-credentials: false
+      
+      # 第一步：收集所有违规点
+      - name: Collect all violations
+        id: collect-violations
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.ISSUE_CHECKER_PAT }}
+          script: |
+            const body = context.payload.issue.body;
+            const title = context.payload.issue.title;
+            
+            // 存储所有违规
+            const violations = [];
+            
+            // 辅助函数：提取字段内容
+            function extractField(pattern) {
+              const match = body.match(pattern);
+              if (!match) return '';
+              return match[1] ? match[1].trim() : '';
+            }
+            
+            // 辅助函数：检查字段长度
+            function checkFieldLength(content, fieldName, minLength = 25) {
+              if (!content || content === '' || content.length < minLength) {
+                violations.push({
+                  type: fieldName,
+                  message: `❌ **${fieldName} 不详细**：当前内容 ${content.length} 字，需要至少 ${minLength} 字的具体描述`
+                });
+                return false;
+              }
+              return true;
+            }
+            
+            // 1. 检查标题
+            if (title.includes('以简单的一段字概括')) {
+              violations.push({
+                type: '标题',
+                message: '❌ **标题违规**：使用默认标题，未修改为具体问题描述'
+              });
+            } else if (title.length < 10) {
+              violations.push({
+                type: '标题',
+                message: '❌ **标题太短**：请使用更具体的描述（至少10字）'
+              });
+            }
+            
+            // 2. 检查复选框
+            const checkboxLines = body.split('\n').filter(line => line.trim().startsWith('- [') || line.trim().startsWith('- [x]'));
+            console.log(`找到 ${checkboxLines.length} 个复选框行`);
+            
+            if (checkboxLines.length >= 6) {
+              // 分别检查每个复选框的状态
+              for (let i = 0; i < checkboxLines.length; i++) {
+                const line = checkboxLines[i];
+                const isChecked = line.includes('- [x]');
+                const text = line.replace(/-\s\[[x\s]\]\s/, '').trim();
+                
+                console.log(`复选框 ${i+1}: checked=${isChecked}, text="${text.substring(0, 30)}..."`);
+                
+                // 前5项必须勾选
+                if (i < 5) {
+                  if (!isChecked) {
+                    violations.push({
+                      type: '复选框',
+                      message: `❌ **必选项未勾选**：第 ${i+1} 项未确认 - "${text.substring(0, 30)}..."`
+                    });
+                  }
+                }
+                
+                // 最后一项（文字游戏）必须不勾选
+                if (i === 5) {
+                  // 检查是否包含文字游戏的关键词
+                  const isTrickQuestion = text.includes('绝非未曾意识到') || 
+                                         text.includes('并非没有不敷衍') ||
+                                         text.includes('无法否认') ||
+                                         text.includes('不取消全部勾选') ||
+                                         text.includes('不应该不被关闭');
+                  
+                  if (isTrickQuestion) {
+                    if (isChecked) {
+                      violations.push({
+                        type: '筛选项',
+                        message: '❌ **筛选项被误勾**：最后一项本不应勾选，说明您没有认真阅读'
+                      });
+                    }
+                  }
+                }
+              }
+            } else {
+              violations.push({
+                type: '模板',
+                message: '❌ **模板不完整**：未使用完整的 Bug 报告模板'
+              });
+            }
+            
+            // 3. 检查 Bug 描述 (至少25字)
+            const description = extractField(/### Bug 描述\n\n([\s\S]*?)(?=\n### |\n$)/);
+            checkFieldLength(description, 'Bug 描述', 25);
+            
+            // 4. 检查复现步骤 (至少25字)
+            const steps = extractField(/### 复现问题的步骤\n\n([\s\S]*?)(?=\n### |\n$)/);
+            if (!checkFieldLength(steps, '复现步骤', 25)) {
+              // 额外检查是否包含示例步骤
+              if (steps.includes('示例步骤') || steps.includes('1. 进入')) {
+                violations.push({
+                  type: '复现步骤',
+                  message: '❌ **复现步骤未修改**：请删除示例步骤，填写真实的操作步骤'
+                });
+              }
+            }
+            
+            // 5. 检查预期行为 (至少15字)
+            const expected = extractField(/### 预期行为\n\n([\s\S]*?)(?=\n### |\n$)/);
+            checkFieldLength(expected, '预期行为', 15);
+            
+            // 6. 检查截图 - 如果有图片链接就算有
+            const screenshots = extractField(/### 截图\n\n([\s\S]*?)(?=\n### |\n$)/);
+            const hasScreenshots = screenshots && 
+                                   screenshots !== '' && 
+                                   !screenshots.includes('No response') &&
+                                   (screenshots.includes('http') || screenshots.includes('![') || screenshots.length > 10);
+            
+            if (!hasScreenshots) {
+              violations.push({
+                type: '截图',
+                message: '⚠️ **建议添加截图**：添加截图有助于更快定位问题'
+              });
+            }
+            
+            // 7. 检查版本选择
+            if (body.includes('我正在使用旧版本')) {
+              violations.push({
+                type: '旧版本',
+                message: '❌ **使用旧版本**：本项目不为旧版本提供维护支持，请更新到最新版'
+              });
+            }
+            
+            // 8. 检查版本号 - 支持 r114 格式
+            const version = extractField(/### 当前版本号\n\n([\s\S]*?)(?=\n### |\n$)/);
+            // 版本号有效格式：r114、r29、1.2.3、v1.2.3、或任何长度>=2的非默认内容
+            const isValidVersion = version && 
+                                   version !== '' && 
+                                   !version.includes('0.0.1') &&  // 不是默认值
+                                   !version.includes('r29') &&    // 排除示例
+                                   version !== '1' &&             // 不是无意义的1
+                                   version.length >= 2 &&         // 至少2个字符
+                                   (
+                                     version.match(/^r\d+$/i) ||           // r114, r29
+                                     version.match(/^\d+\.\d+\.\d+/) ||    // 1.2.3
+                                     version.match(/^v?\d+\.\d+\.\d+/) ||  // v1.2.3
+                                     version.length > 3                    // 其他有效格式（如 r114-test）
+                                   );
+            
+            if (!isValidVersion) {
+              violations.push({
+                type: '版本号',
+                message: '❌ **版本号无效**：请提供具体的版本号（如 r114、r29、1.2.3 等）'
+              });
+            }
+            
+            // 9. 检查 Android 版本 - 支持直接填数字
+            const android = extractField(/### Android 版本\n\n([\s\S]*?)(?=\n### |\n$)/);
+            // Android版本有效格式：14、Android 14、14.0、14.0.0 等
+            const isValidAndroid = android && 
+                                   android !== '' && 
+                                   !android.includes('Android 13') &&  // 不是默认值
+                                   !android.includes('安卓') &&        // 不是敷衍
+                                   android !== '1' &&                  // 不是无意义的1
+                                   android.length >= 1 &&              // 至少1个字符
+                                   (
+                                     android.match(/^\d+$/) ||                 // 纯数字：14
+                                     android.match(/^Android\s*\d+/i) ||       // Android 14
+                                     android.match(/^\d+\.\d+$/) ||            // 14.0
+                                     android.match(/^\d+\.\d+\.\d+$/) ||       // 14.0.0
+                                     (android.length >= 2 && android !== 'No response')  // 其他有效格式
+                                   );
+            
+            if (!isValidAndroid) {
+              violations.push({
+                type: 'Android 版本',
+                message: '❌ **Android 版本无效**：请提供具体的系统版本（如 14、Android 14、14.0）'
+              });
+            }
+            
+            // 10. 检查设备信息
+            const device = extractField(/### 设备厂商及型号\n\n([\s\S]*?)(?=\n### |\n$)/);
+            const isValidDevice = device && 
+                                  device !== '' && 
+                                  !device.includes('Sony') &&      // 不是默认示例
+                                  !device.includes('BRAVIA') &&    // 不是默认示例
+                                  device !== '手机' &&              // 不是敷衍
+                                  device !== 'No response' &&       // 不是未填写
+                                  device.length >= 5;               // 至少5个字符
+            
+            if (!isValidDevice) {
+              violations.push({
+                type: '设备信息',
+                message: '❌ **设备信息缺失**：请提供具体的设备厂商和型号（如 Xiaomi 14 Pro、Samsung S24）'
+              });
+            }
+            
+            // 11. 检查日志
+            const logsMatch = body.match(/### 相关日志\n\n([\s\S]*?)(?=\n### |\n$)/);
+            const logsContent = logsMatch ? logsMatch[1].trim() : '';
+            
+            const hasLogs = logsContent && 
+                           logsContent !== '' && 
+                           !logsContent.includes('No response') &&
+                           !logsContent.includes('你可以在 `设置` 中查看') &&
+                           !logsContent.includes('在同一网络环境下') &&
+                           logsContent.length > 20;
+            
+            if (!hasLogs) {
+              violations.push({
+                type: '日志',
+                message: '❌ **缺少日志**：没有日志如同闭眼开车，无法诊断问题。请从「设置 > 更多设置 > 查看日志」中获取日志'
+              });
+            }
+            
+            // 12. 检查视频 ID（可选，但如果有应该格式正确）
+            const video = extractField(/### 遇到问题的视频 avid 或 bvid\n\n([\s\S]*?)(?=\n### |\n$)/);
+            if (video && video !== '' && !video.includes('No response')) {
+              if (!video.match(/^(av|BV)\w+/)) {
+                violations.push({
+                  type: '视频ID',
+                  message: '⚠️ **视频ID格式错误**：请使用正确的 av 号（如 av170001）或 BV 号'
+                });
+              }
+            }
+            
+            // 输出所有违规
+            const violationsJson = JSON.stringify(violations);
+            const shouldClose = violations.some(v => v.message.startsWith('❌'));
+            
+            console.log(`发现 ${violations.length} 项违规（${violations.filter(v => v.message.startsWith('❌')).length} 项错误，${violations.filter(v => v.message.startsWith('⚠️')).length} 项警告）`);
+            
+            // 设置输出
+            core.setOutput('violations', violationsJson);
+            core.setOutput('should_close', shouldClose.toString());
+            core.setOutput('violation_count', violations.length.toString());
+            
+            // 如果没有违规，发送感谢
+            if (!shouldClose && violations.length === 0) {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '✅ **完美通过检查**！感谢您认真填写 Bug 报告，我们会尽快处理。'
+              });
+            }
+      
+      # 第二步：如果有违规，统一处理
+      - name: Process violations
+        if: steps.collect-violations.outputs.should_close == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.ISSUE_CHECKER_PAT }}
+          script: |
+            const violations = JSON.parse('${{ steps.collect-violations.outputs.violations }}');
+            const violationCount = '${{ steps.collect-violations.outputs.violation_count }}';
+            
+            // 分离错误和警告
+            const errors = violations.filter(v => v.message.startsWith('❌'));
+            const warnings = violations.filter(v => v.message.startsWith('⚠️'));
+            
+            // 构建回复内容
+            let commentBody = '## 📋 **Bug 报告检查结果**\n\n';
+            
+            if (errors.length > 0) {
+              commentBody += `### 🚫 **发现 ${errors.length} 项必须修正的问题**\n\n`;
+              errors.forEach((v, index) => {
+                commentBody += `${index + 1}. ${v.message}\n`;
+              });
+              commentBody += '\n';
+            }
+            
+            if (warnings.length > 0) {
+              commentBody += `### ⚠️ **${warnings.length} 项建议改进**\n\n`;
+              warnings.forEach((v, index) => {
+                commentBody += `${index + 1}. ${v.message}\n`;
+              });
+              commentBody += '\n';
+            }
+            
+            commentBody += '---\n';
+            commentBody += '🔄 **此 Issue 已被自动关闭，请修正后重新创建**';
+            
+            // 添加标签
+            const labels = ['无效'];
+            if (errors.some(v => v.type === '日志')) labels.push('缺少日志');
+            if (errors.some(v => v.type === '旧版本')) labels.push('使用旧版本');
+            if (errors.some(v => v.type === '筛选项')) labels.push('未认真阅读');
+            
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: labels
+            });
+            
+            // 发送评论
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+            
+            // 关闭 Issue
+            await github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              state_reason: 'not_planned'
+            });
