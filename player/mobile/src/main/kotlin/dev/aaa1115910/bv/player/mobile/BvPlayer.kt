@@ -259,10 +259,11 @@ fun BvPlayer(
 
     }
 
+    // ★ 优化：位置更新频率调整，减少主线程压力
     LaunchedEffect(Unit) {
         while (true) {
             updatePosition()
-            delay(200)
+            delay(250) // 从 200ms 调整为 250ms，减少不必要的重组
         }
     }
 
@@ -320,9 +321,9 @@ fun BvPlayer(
             onPlay = { videoPlayer.start() },
             onPause = { videoPlayer.pause() },
             onSeekToPosition = { position ->
-                mDanmakuPlayer?.seekTo(position)
-                mDanmakuPlayer?.pause()
-                videoPlayer.seekTo(position)
+                mDanmakuPlayer?.pause()           // ★ 先暂停弹幕渲染
+                videoPlayer.seekTo(position)       // 再执行 seek
+                mDanmakuPlayer?.seekTo(position)  // 弹幕跟随 seek（播放恢复时弹幕会在 onPlay 中 start）
             },
             onChangeResolution = {
                 val currentTime = currentPosition
