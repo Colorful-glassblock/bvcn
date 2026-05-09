@@ -8,6 +8,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
@@ -18,7 +19,11 @@ import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.OkHttpUtil
 import dev.aaa1115910.bv.player.VideoPlayerOptions
 import dev.aaa1115910.bv.util.formatHourMinSec
+import io.github.oshai.kotlinlogging.KotlinLogging
+import okhttp3.ConnectionPool
 import java.util.concurrent.TimeUnit
+
+private val logger = KotlinLogging.logger("ExoMediaPlayer")
 
 @OptIn(UnstableApi::class)
 class ExoMediaPlayer(
@@ -28,11 +33,18 @@ class ExoMediaPlayer(
     var mPlayer: ExoPlayer? = null
     protected var mMediaSource: MediaSource? = null
 
+    // 错误重试计数
+    private var errorRetryCount = 0
+    private val maxRetryCount = 3
+
     @OptIn(UnstableApi::class)
     private val dataSourceFactory = OkHttpDataSource.Factory(
         OkHttpUtil.generateCustomSslOkHttpClient(context).newBuilder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)       // 增大读超时（视频数据块较大）
+            .writeTimeout(10, TimeUnit.SECONDS)      // 添加写超时
+            .retryOnConnectionFailure(true)          // 连接失败自动重试
+            .connectionPool(ConnectionPool(5, 60, TimeUnit.SECONDS)) // 连接池复用
             .build()
     ).apply {
         options.userAgent?.let { setUserAgent(it) }
@@ -57,9 +69,25 @@ class ExoMediaPlayer(
                 setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             }
         }
-        mPlayer = ExoPlayer
-            .Builder(context)
+
+        // ★ 自定义缓冲策略 - 解决播放卡死的核心优化
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                /* minBufferMs = */ 50_000,                   // 最小缓冲 50 秒（默认 15s 对 B 站 CDN 太小）
+                /* maxBufferMs = */ 120_000,                  // 最大缓冲 2 分钟
+                /* bufferForPlaybackMs = */ 2_500,            // 初始播放前需缓冲 2.5 秒
+                /* bufferForPlaybackAfterRebufferMs = */ 5_000 // 重新缓冲后需要 5 秒才恢复播放（避免频繁卡顿）
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .setBackBuffer(
+                /* backBufferDurationMs = */ 30_000,          // 保留 30 秒回看缓冲（方便快速回退）
+                /* retainBackBufferFromKeyframe = */ true
+            )
+            .build()
+
+        mPlayer = ExoPlayer.Builder(context)
             .setRenderersFactory(renderersFactory)
+            .setLoadControl(loadControl)              // ★ 应用自定义缓冲策略
             .setSeekForwardIncrementMs(1000 * 10)
             .setSeekBackIncrementMs(1000 * 5)
             .build()
@@ -78,17 +106,26 @@ class ExoMediaPlayer(
 
     @OptIn(UnstableApi::class)
     override fun playUrl(videoUrl: String?, audioUrl: String?) {
+        // 重置重试计数
+        errorRetryCount = 0
+
         val videoMediaSource = videoUrl?.let {
             ProgressiveMediaSource.Factory(dataSourceFactory)
+                .setContinueLoadingCheckIntervalBytes(512 * 1024) // 每 512KB 检查是否继续加载
                 .createMediaSource(MediaItem.fromUri(it))
         }
         val audioMediaSource = audioUrl?.let {
             ProgressiveMediaSource.Factory(dataSourceFactory)
+                .setContinueLoadingCheckIntervalBytes(256 * 1024)
                 .createMediaSource(MediaItem.fromUri(it))
         }
 
         val mediaSources = listOfNotNull(videoMediaSource, audioMediaSource)
-        mMediaSource = MergingMediaSource(*mediaSources.toTypedArray())
+        mMediaSource = MergingMediaSource(
+            /* adjustPeriodTimeOffsets = */ true,
+            /* clipDurations = */ true,  // 对齐音视频时长，避免播放末尾卡住
+            *mediaSources.toTypedArray()
+        )
     }
 
     @OptIn(UnstableApi::class)
@@ -110,7 +147,9 @@ class ExoMediaPlayer(
     }
 
     override fun reset() {
-        TODO("Not yet implemented")
+        mPlayer?.stop()
+        mPlayer?.clearMediaItems()
+        errorRetryCount = 0
     }
 
     override val isPlaying: Boolean
@@ -147,7 +186,11 @@ class ExoMediaPlayer(
         when (playbackState) {
             Player.STATE_IDLE -> mPlayerEventListener?.onIdle()
             Player.STATE_BUFFERING -> mPlayerEventListener?.onBuffering()
-            Player.STATE_READY -> mPlayerEventListener?.onReady()
+            Player.STATE_READY -> {
+                // 播放成功恢复时重置重试计数
+                errorRetryCount = 0
+                mPlayerEventListener?.onReady()
+            }
             Player.STATE_ENDED -> mPlayerEventListener?.onEnd()
         }
     }
@@ -198,6 +241,21 @@ class ExoMediaPlayer(
         get() = mPlayer?.videoSize?.height ?: 0
 
     override fun onPlayerError(error: PlaybackException) {
-        mPlayerEventListener?.onError(error)
+        logger.error { "Player error: code=${error.errorCode}, message=${error.message}" }
+
+        // ★ 网络错误自动重试（最多重试 3 次）
+        val isNetworkError = error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+                error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
+                error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
+                error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED
+
+        if (isNetworkError && errorRetryCount < maxRetryCount) {
+            errorRetryCount++
+            logger.info { "Network error, auto retry ($errorRetryCount/$maxRetryCount)" }
+            mPlayer?.prepare()  // 自动重新准备播放
+        } else {
+            // 超过重试次数或非网络错误，通知上层
+            mPlayerEventListener?.onError(error)
+        }
     }
 }
