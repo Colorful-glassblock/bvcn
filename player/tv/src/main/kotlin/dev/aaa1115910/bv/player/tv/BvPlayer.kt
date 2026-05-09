@@ -157,10 +157,18 @@ fun BvPlayer(
         currentPosition = videoPlayer.currentPosition.coerceAtLeast(0L)
         duration = videoPlayer.duration.coerceAtLeast(0L)
         bufferedPercentage = videoPlayer.bufferedPercentage
-        // 更新弹幕分段
-        onUpdateDanmakuForPosition?.let { updateFunc ->
-            scope.launch {
-                updateFunc(currentPosition)
+    }
+
+    // ★ 弹幕分段更新独立出来，降低频率（每 5 秒检查一次是否需要加载新段）
+    var lastDanmakuSegmentCheckTime = 0L
+    val updateDanmakuSegmentIfNeeded: () -> Unit = {
+        val now = System.currentTimeMillis()
+        if (now - lastDanmakuSegmentCheckTime > 5000L) {
+            lastDanmakuSegmentCheckTime = now
+            onUpdateDanmakuForPosition?.let { updateFunc ->
+                scope.launch {
+                    updateFunc(currentPosition)
+                }
             }
         }
     }
@@ -357,7 +365,10 @@ fun BvPlayer(
 
     DisposableEffect(Unit) {
         val updateSeekTimer = timeTask(0, 100, "updateSeekTimer", false) {
-            scope.launch { updateSeek() }
+            scope.launch {
+                updateSeek()
+                updateDanmakuSegmentIfNeeded()
+            }
         }
         onDispose {
             updateSeekTimer.cancel()
