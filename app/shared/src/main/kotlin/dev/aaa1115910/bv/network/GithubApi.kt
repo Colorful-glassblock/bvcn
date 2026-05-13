@@ -22,6 +22,7 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.cio.writeChannel
 import io.ktor.utils.io.copyAndClose
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -65,7 +66,10 @@ object GithubApi {
         }
     }
 
-    private suspend fun getReleases(
+    /**
+     * 获取仓库所有 release，不附加任何过滤
+     */
+    private suspend fun getAllReleases(
         owner: String = OWNER,
         repo: String = REPO,
         pageSize: Int = 30,
@@ -76,9 +80,42 @@ object GithubApi {
             parameter("page", page)
         }.bodyAsText()
         checkErrorMessage(response)
-        val allReleases = json.decodeFromString<List<Release>>(response)
-        // 过滤只匹配当前分支的 release
-        return allReleases.filter { it.targetCommitish == CURRENT_BRANCH }
+        return json.decodeFromString<List<Release>>(response)
+    }
+
+    /**
+     * 解析 sever git ref 返回的 JSON 提取 HEAD commit SHA
+     * 用于获取某个分支的最新 commit hash
+     */
+    private suspend fun getBranchHeadSha(branch: String): String {
+        val response = client.get("repos/$OWNER/$REPO/git/refs/heads/$branch") {
+            parameter("per_page", 1)
+        }.bodyAsText()
+        checkErrorMessage(response)
+        val responseObject: JsonObject = json.parseToJsonElement(response).jsonObject
+        return responseObject["object"]!!.jsonObject["sha"]!!.jsonPrimitive.content
+    }
+
+    /**
+     * 获取指定分支的 release 列表。
+     * 通过比对 release.targetCommitish 与分支 HEAD SHA 过滤。
+     */
+    private suspend fun getReleases(
+        owner: String = OWNER,
+        repo: String = REPO,
+        pageSize: Int = 30,
+        page: Int = 1
+    ): List<Release> {
+        // 先 resolve 当前分支 HEAD commit SHA，用作过滤条件
+        val branchHeadSha = try {
+            getBranchHeadSha(CURRENT_BRANCH)
+        } catch (e: Exception) {
+            // 网络或 API 错误时降级：不分支过滤，直接返回所有 release
+            return getAllReleases(owner, repo, pageSize, page)
+        }
+        val allReleases = getAllReleases(owner, repo, pageSize, page)
+        // 只保留 targetCommitish 精确匹配当前分支 HEAD SHA 的 release
+        return allReleases.filter { it.targetCommitish == branchHeadSha }
     }
 
     private suspend fun getLatestRelease(
@@ -93,7 +130,7 @@ object GithubApi {
     suspend fun getLatestPreReleaseBuild(): Release {
         var release: Release? = null
         var page = 1
-        while (release == null) {
+        while (release == null && page <= 10) {
             val releases = getReleases(page = page)
             if (releases.isEmpty()) break
             release = releases.firstOrNull { it.isPreRelease }
@@ -111,7 +148,7 @@ object GithubApi {
         val responseElement = json.parseToJsonElement(data)
         if (responseElement !is JsonObject) return
         val responseObject = responseElement.jsonObject
-        check(responseObject.size != 2 && responseObject["message"] == null) { responseObject["message"]!!.jsonPrimitive.content }
+        check(responseObject["message"] == null) { responseObject["message"]!!.jsonPrimitive.content }
     }
 
     suspend fun downloadUpdate(
