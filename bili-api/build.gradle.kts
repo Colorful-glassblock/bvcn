@@ -7,7 +7,8 @@ plugins {
 group = "dev.aaa1115910"
 
 dependencies {
-    ksp(libs.koin.ksp.compiler)    implementation(project(":bili-api:grpc"))
+    ksp(libs.koin.ksp.compiler)
+    implementation(project(":bili-api:grpc"))
     implementation(libs.koin.core)
     implementation(libs.koin.annotations)
     implementation(libs.jsoup)
