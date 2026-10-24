@@ -59,7 +59,8 @@ object HttpServer {
                     HttpHeaders.ContentDisposition,
                     ContentDisposition.Attachment.withParameter(
                         ContentDisposition.Parameters.FileName,
-                        file.name
+                        // 文件名里的冒号会让部分 Android 下载器和桌面浏览器保存失败
+                        file.name.replace(':', '-')
                     ).toString()
                 )
                 call.respondFile(file)

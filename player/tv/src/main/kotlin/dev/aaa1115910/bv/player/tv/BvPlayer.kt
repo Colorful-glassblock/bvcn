@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -158,12 +159,13 @@ fun BvPlayer(
     }
 
     // ★ 弹幕分段更新独立出来，降低频率（每 5 秒检查一次是否需要加载新段）
-    var lastDanmakuSegmentCheckTime = 0L
+    val lastDanmakuSegmentCheckTime = remember { mutableLongStateOf(0L) }
+    val currentOnUpdateDanmakuForPosition by rememberUpdatedState(onUpdateDanmakuForPosition)
     val updateDanmakuSegmentIfNeeded: () -> Unit = {
         val now = System.currentTimeMillis()
-        if (now - lastDanmakuSegmentCheckTime > 5000L) {
-            lastDanmakuSegmentCheckTime = now
-            onUpdateDanmakuForPosition?.let { updateFunc ->
+        if (now - lastDanmakuSegmentCheckTime.longValue > 5000L) {
+            lastDanmakuSegmentCheckTime.longValue = now
+            currentOnUpdateDanmakuForPosition?.let { updateFunc ->
                 scope.launch {
                     updateFunc(currentPosition)
                 }

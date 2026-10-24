@@ -22,7 +22,6 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.cio.writeChannel
 import io.ktor.utils.io.copyAndClose
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -32,8 +31,14 @@ object GithubApi {
     private var endPoint = "api.github.com"
     private const val OWNER = "Colorful-glassblock"
     private const val REPO = "bvcn"
-    // 当前分支名称，用于过滤对应分支的 release
+    // 当前构建所在分支，用于匹配对应分支的 release
     private const val CURRENT_BRANCH = "lastAndroid5"
+    // 当前分支 CI 产物使用的 tag 前缀（alpha-r* / lastAndroid5-r*）
+    private const val RELEASE_TAG_PREFIX = "lastAndroid5-"
+    // 正式版 release 使用 v* tag
+    private const val STABLE_RELEASE_TAG_PREFIX = "v"
+    private const val RELEASES_PER_PAGE = 30
+    private const val MAX_RELEASE_PAGES = 10
     private lateinit var client: HttpClient
     private val json = Json {
         coerceInputValues = true
@@ -72,7 +77,7 @@ object GithubApi {
     private suspend fun getAllReleases(
         owner: String = OWNER,
         repo: String = REPO,
-        pageSize: Int = 30,
+        pageSize: Int = RELEASES_PER_PAGE,
         page: Int = 1
     ): List<Release> {
         val response = client.get("repos/$owner/$repo/releases") {
@@ -84,60 +89,38 @@ object GithubApi {
     }
 
     /**
-     * 解析 sever git ref 返回的 JSON 提取 HEAD commit SHA
-     * 用于获取某个分支的最新 commit hash
+     * 按发布时间从新到旧分页查找第一条满足条件的 release。
+     *
+     * 这里必须根据“过滤前”的整页大小判断是否继续翻页：develop 和 lastAndroid5
+     * 的 release 是混在一起的，某一页可能正好全是另一个分支的包，过滤后为空
+     * 并不代表后面没有当前分支的 release。
      */
-    private suspend fun getBranchHeadSha(branch: String): String {
-        val response = client.get("repos/$OWNER/$REPO/git/refs/heads/$branch") {
-            parameter("per_page", 1)
-        }.bodyAsText()
-        checkErrorMessage(response)
-        val responseObject: JsonObject = json.parseToJsonElement(response).jsonObject
-        return responseObject["object"]!!.jsonObject["sha"]!!.jsonPrimitive.content
-    }
-
-    /**
-     * 获取指定分支的 release 列表。
-     * 通过比对 release.targetCommitish 与分支 HEAD SHA 过滤。
-     */
-    private suspend fun getReleases(
+    private suspend fun findLatestRelease(
         owner: String = OWNER,
         repo: String = REPO,
-        pageSize: Int = 30,
-        page: Int = 1
-    ): List<Release> {
-        // 先 resolve 当前分支 HEAD commit SHA，用作过滤条件
-        val branchHeadSha = try {
-            getBranchHeadSha(CURRENT_BRANCH)
-        } catch (e: Exception) {
-            // 网络或 API 错误时降级：不分支过滤，直接返回所有 release
-            return getAllReleases(owner, repo, pageSize, page)
+        predicate: (Release) -> Boolean
+    ): Release? {
+        var page = 1
+        while (page <= MAX_RELEASE_PAGES) {
+            val releases = getAllReleases(owner, repo, page = page)
+            releases.firstOrNull(predicate)?.let { return it }
+            if (releases.size < RELEASES_PER_PAGE) break
+            page++
         }
-        val allReleases = getAllReleases(owner, repo, pageSize, page)
-        // 只保留 targetCommitish 精确匹配当前分支 HEAD SHA 的 release
-        return allReleases.filter { it.targetCommitish == branchHeadSha }
+        return null
     }
 
     private suspend fun getLatestRelease(
         owner: String = OWNER,
         repo: String = REPO
-    ): Release {
-        val releases = getReleases(owner = owner, repo = repo, pageSize = 1)
-        return releases.firstOrNull { !it.isPreRelease }
-            ?: throw IllegalStateException("No release found for branch $CURRENT_BRANCH")
-    }
+    ): Release = findLatestRelease(owner, repo) {
+        it.isRelease && it.tagName.startsWith(STABLE_RELEASE_TAG_PREFIX)
+    } ?: throw IllegalStateException("No release found")
 
-    suspend fun getLatestPreReleaseBuild(): Release {
-        var release: Release? = null
-        var page = 1
-        while (release == null && page <= 10) {
-            val releases = getReleases(page = page)
-            if (releases.isEmpty()) break
-            release = releases.firstOrNull { it.isPreRelease }
-            page++
-        }
-        return release ?: throw IllegalStateException("No pre-release found for branch $CURRENT_BRANCH")
-    }
+    suspend fun getLatestPreReleaseBuild(): Release =
+        findLatestRelease {
+            it.isPreRelease && it.tagName.startsWith(RELEASE_TAG_PREFIX)
+        } ?: throw IllegalStateException("No pre-release found for branch $CURRENT_BRANCH")
 
     suspend fun getLatestReleaseBuild(): Release = getLatestRelease()
 
