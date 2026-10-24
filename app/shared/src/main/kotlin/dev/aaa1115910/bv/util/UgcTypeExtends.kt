@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package dev.aaa1115910.bv.util
 
 import android.content.Context

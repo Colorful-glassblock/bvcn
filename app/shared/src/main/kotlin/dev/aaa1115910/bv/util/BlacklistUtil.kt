@@ -29,7 +29,6 @@ object BlacklistUtil {
         // download blacklist binary
         runCatching {
             blacklistBinary = downloadBlacklist()
-            check(blacklistBinary != null) { "blacklist is null" }
         }.onFailure {
             logger.warn { "download blacklist failed: ${it.stackTraceToString()}" }
             return

@@ -84,6 +84,7 @@ android {
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+    arg("KOIN_DEFAULT_MODULE", "true")
 }
 
 java {

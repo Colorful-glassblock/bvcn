@@ -7,8 +7,7 @@ plugins {
 group = "dev.aaa1115910"
 
 dependencies {
-    ksp(libs.koin.ksp.compiler)
-    implementation(project(":bili-api:grpc"))
+    ksp(libs.koin.ksp.compiler)    implementation(project(":bili-api:grpc"))
     implementation(libs.koin.core)
     implementation(libs.koin.annotations)
     implementation(libs.jsoup)
@@ -23,6 +22,10 @@ dependencies {
     implementation(libs.logging)
     implementation(libs.slf4j.simple)
     testImplementation(libs.kotlin.test)
+}
+
+ksp {
+    arg("KOIN_DEFAULT_MODULE", "true")
 }
 
 tasks.test {

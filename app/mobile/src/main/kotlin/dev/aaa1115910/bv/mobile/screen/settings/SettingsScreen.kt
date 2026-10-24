@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package dev.aaa1115910.bv.mobile.screen.settings
 
 import android.app.Activity

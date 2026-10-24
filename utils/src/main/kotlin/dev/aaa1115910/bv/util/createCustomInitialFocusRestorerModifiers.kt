@@ -53,11 +53,11 @@ fun createCustomInitialFocusRestorerModifiers(): FocusRequesterModifiers {
     val parentModifier = Modifier
         .focusRequester(focusRequester)
         .focusProperties {
-            exit = {
+            onExit = {
                 focusRequester.saveFocusedChild()
                 FocusRequester.Default
             }
-            enter = {
+            onEnter = {
                 if (!focusRequester.restoreFocusedChild())
                     childFocusRequester
                 else

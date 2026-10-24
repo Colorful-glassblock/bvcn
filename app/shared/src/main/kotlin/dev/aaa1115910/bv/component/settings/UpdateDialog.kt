@@ -61,8 +61,8 @@ fun UpdateDialog(
 
     var updateStatus by remember { mutableStateOf(UpdateStatus.UpdatingInfo) }
 
-    var bytesSentTotal: Long by remember { mutableLongStateOf(0L) }
-    var contentLength: Long by remember { mutableLongStateOf(0L) }
+    var downloadedBytes: Long by remember { mutableLongStateOf(0L) }
+    var totalBytes: Long by remember { mutableLongStateOf(0L) }
     var targetProgress by remember { mutableFloatStateOf(0f) }
     val progress by animateFloatAsState(
         targetValue = targetProgress,
@@ -124,11 +124,11 @@ fun UpdateDialog(
                     latestReleaseBuild!!,
                     tempFile,
                     object : ProgressListener {
-                        override suspend fun onProgress(downloaded: Long, total: Long?) {
-                            bytesSentTotal = downloaded
-                            contentLength = total ?: 0
+                        override suspend fun onProgress(bytesSentTotal: Long, contentLength: Long?) {
+                            downloadedBytes = bytesSentTotal
+                            totalBytes = contentLength ?: 0
                             targetProgress =
-                                runCatching { bytesSentTotal.toFloat() / contentLength }
+                                runCatching { downloadedBytes.toFloat() / totalBytes }
                                     .getOrDefault(0f)
                         }
                     })
@@ -154,8 +154,8 @@ fun UpdateDialog(
             updateStatus = updateStatus,
             latestReleaseBuild = latestReleaseBuild,
             progress = progress,
-            bytesSentTotal = bytesSentTotal,
-            contentLength = contentLength,
+            bytesSentTotal = downloadedBytes,
+            contentLength = totalBytes,
             onHideDialog = onHideDialog,
             checkUpdate = checkUpdate,
             startUpdate = startUpdate,

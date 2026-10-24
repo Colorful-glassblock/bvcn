@@ -36,4 +36,9 @@ object AppConfiguration {
     }
 }
 
-fun String.exec() = String(Runtime.getRuntime().exec(this).inputStream.readBytes()).trim()
+fun String.exec() = ProcessBuilder(*trim().split(Regex("\\s+")).toTypedArray())
+    .start()
+    .inputStream
+    .readBytes()
+    .toString(Charsets.UTF_8)
+    .trim()
