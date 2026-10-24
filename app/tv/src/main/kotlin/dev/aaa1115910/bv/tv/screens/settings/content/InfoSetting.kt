@@ -111,7 +111,10 @@ fun InfoSetting(
             Text(text = stringResource(R.string.settings_info_system, Build.VERSION.RELEASE))
             Text(
                 text = stringResource(
-                    R.string.settings_info_screen, *screenInfo.toList().toTypedArray()
+                    R.string.settings_info_screen,
+                    screenInfo.first,
+                    screenInfo.second,
+                    screenInfo.third
                 )
             )
             if (Build.VERSION.SDK_INT >= 31)

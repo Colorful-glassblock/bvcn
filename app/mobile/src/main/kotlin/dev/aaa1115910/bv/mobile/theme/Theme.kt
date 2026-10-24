@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package dev.aaa1115910.bv.mobile.theme
 
 import android.app.Activity

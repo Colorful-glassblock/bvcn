@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package dev.aaa1115910.biliapi.repositories
 
 import dev.aaa1115910.biliapi.entity.CarouselData
