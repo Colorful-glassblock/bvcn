@@ -49,6 +49,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -127,6 +128,18 @@ class VideoPlayerV3ViewModel(
 
     private suspend fun releaseDanmakuPlayer() = withContext(Dispatchers.Main) {
         danmakuPlayer?.release()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // ExoPlayer 不 release 会一直持有播放线程、解码器和缓冲区，低内存设备上很快 OOM
+        runCatching { videoPlayer?.release() }
+        videoPlayer = null
+        runCatching { danmakuPlayer?.release() }
+        danmakuPlayer = null
+        danmakuSegments = emptyMap()
+        danmakuData.clear()
+        danmakuMasks.clear()
     }
 
     suspend fun initDanmakuPlayer() = withContext(Dispatchers.Main) {
@@ -412,61 +425,100 @@ class VideoPlayerV3ViewModel(
     // 弹幕分段管理
     private var danmakuSegments: Map<Long, List<DanmakuItemData>> = emptyMap()
     private var danmakuSegmentDuration = 60_000L // 每段60秒
+    private var firstLoadedSegment = -1L
     private var lastLoadedSegment = -1L
+    private val initialSegmentCount = 3
+    private val loadSegmentCount = 4
 
     suspend fun loadDanmaku(cid: Long) {
         runCatching {
-            val danmakuXmlData = BiliHttpApi.getDanmakuXml(cid = cid, sessData = Prefs.sessData)
+            // ── 全量解析、映射和分段全部在 Default 线程池 ──
+            val segmentDuration = danmakuSegmentDuration
+            val (segments, initial) = withContext(Dispatchers.Default) {
+                val danmakuXmlData = BiliHttpApi.getDanmakuXml(cid = cid, sessData = Prefs.sessData)
 
-            // 转换为 DanmakuItemData 列表
-            val allDanmaku = danmakuXmlData.data.map {
-                DanmakuItemData(
-                    danmakuId = it.dmid,
-                    position = (it.time * 1000).toLong(),
-                    content = it.text,
-                    mode = when (it.type) {
-                        4 -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
-                        5 -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
-                        else -> DanmakuItemData.DANMAKU_MODE_ROLLING
-                    },
-                    textSize = it.size,
-                    textColor = Color(it.color).toArgb()
-                )
+                // 映射为 DanmakuItemData（Default 线程）
+                val allDanmaku = danmakuXmlData.data.map {
+                    DanmakuItemData(
+                        danmakuId = it.dmid,
+                        position = (it.time * 1000).toLong(),
+                        content = it.text,
+                        mode = when (it.type) {
+                            4 -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
+                            5 -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
+                            else -> DanmakuItemData.DANMAKU_MODE_ROLLING
+                        },
+                        textSize = it.size,
+                        textColor = Color(it.color).toArgb()
+                    )
+                }
+
+                // 按时间分段（也是 Default 线程）
+                val grouped = allDanmaku.groupBy { it.position / segmentDuration }
+                // 初始只取时间上最靠前的几段。不能按 map.size 取，弹幕可能从几分钟后才开始
+                val initialKeys = grouped.keys.sorted().take(initialSegmentCount)
+                val initialData = buildList {
+                    initialKeys.forEach { addAll(grouped.getValue(it)) }
+                }
+                logger.fInfo { "Grouped ${allDanmaku.size} danmaku into ${grouped.size} segments" }
+                grouped to initialData
             }
 
-            // 按时间分段存储
-            danmakuSegments = allDanmaku.groupBy { it.position / danmakuSegmentDuration }
-            lastLoadedSegment = -1
+            // ── 切换回主线程做状态写入 ──
+            withContext(Dispatchers.Main) {
+                danmakuSegments = segments
+                danmakuData.swapList(initial)
+                danmakuPlayer?.updateData(danmakuData)
 
-            // 加载初始段（前3分钟的弹幕）
-            loadDanmakuSegment(0, 3)
+                val initialKeys = segments.keys.sorted().take(initialSegmentCount)
+                firstLoadedSegment = initialKeys.firstOrNull() ?: -1L
+                lastLoadedSegment = initialKeys.lastOrNull() ?: -1L
 
-            addLogs("已加载 ${allDanmaku.size} 条弹幕（${danmakuSegments.size} 段）")
-            logger.fInfo { "Load danmaku success, total=${allDanmaku.size}, segments=${danmakuSegments.size}" }
+                addLogs("已加载 ${initial.size} 条弹幕（共 ${segments.values.sumOf { it.size }} 条）")
+                logger.fInfo {
+                    "Load danmaku done, loaded=${initial.size}, total=${segments.values.sumOf { it.size }}, " +
+                        "segments=${segments.size}, window=$firstLoadedSegment–$lastLoadedSegment"
+                }
+            }
         }.onFailure {
+            // 不要吞掉协程取消
+            if (it is CancellationException) throw it
             addLogs("加载弹幕失败：${it.localizedMessage}")
-            logger.fWarn { "Load danmaku filed: ${it.stackTraceToString()}" }
+            logger.fWarn { "Load danmaku failed: ${it.stackTraceToString()}" }
         }
     }
 
     /**
-     * 加载指定范围的弹幕段
+     * 加载指定范围的弹幕段（Default 线程计算 + Main 线程一次性 swapList）
      * @param startSegment 起始段索引
      * @param segmentCount 加载段数
      */
     private suspend fun loadDanmakuSegment(startSegment: Long, segmentCount: Int) {
         val endSegment = startSegment + segmentCount
-        val newDanmaku = mutableListOf<DanmakuItemData>()
+        val segmentList = danmakuSegments // 局部引用，避免并发读写问题
 
-        for (segment in startSegment until endSegment) {
-            danmakuSegments[segment]?.let { newDanmaku.addAll(it) }
+        // 全量拷贝到新 List（在 Default 线程构建，不阻塞 UI）
+        val newDanmaku = withContext(Dispatchers.Default) {
+            buildList(capacity = segmentCount * 300) {
+                for (s in startSegment until endSegment) {
+                    segmentList[s]?.let { addAll(it) }
+                }
+            }
         }
 
-        if (newDanmaku.isNotEmpty()) {
-            danmakuData.swapListWithMainContext(newDanmaku)
+        // 只切一次主线程做 swapList + updateData
+        withContext(Dispatchers.Main) {
+            // 换集时 danmakuSegments 已被替换，丢弃这次旧结果
+            if (segmentList !== danmakuSegments) return@withContext
+
+            danmakuData.swapList(newDanmaku)
             danmakuPlayer?.updateData(danmakuData)
+            firstLoadedSegment = startSegment
             lastLoadedSegment = endSegment - 1
-            logger.fInfo { "Loaded danmaku segments $startSegment to ${endSegment - 1}, count=${newDanmaku.size}" }
+            logger.fInfo {
+                "Loaded segments $startSegment–${endSegment - 1}, " +
+                    "count=${newDanmaku.size}, window=$firstLoadedSegment–$lastLoadedSegment"
+            }
         }
     }
 
@@ -475,11 +527,17 @@ class VideoPlayerV3ViewModel(
      * @param currentPosition 当前播放位置（毫秒）
      */
     suspend fun updateDanmakuForPosition(currentPosition: Long) {
-        val currentSegment = currentPosition / danmakuSegmentDuration
+        if (danmakuSegments.isEmpty()) return
 
-        // 如果当前位置超出已加载范围，加载新段
-        if (currentSegment > lastLoadedSegment - 1) {
-            loadDanmakuSegment(currentSegment, 3)
+        val currentSegment = currentPosition / danmakuSegmentDuration
+        val first = firstLoadedSegment
+        val last = lastLoadedSegment
+
+        // 当前位置不在已加载窗口内（快进/快退），或已经播到窗口最后一段时重新加载。
+        // 从 currentSegment - 1 开始，避免替换数据时丢掉屏幕上还在滚动的弹幕。
+        if (currentSegment < first || currentSegment >= last) {
+            val startSegment = (currentSegment - 1).coerceAtLeast(0L)
+            loadDanmakuSegment(startSegment, loadSegmentCount)
         }
     }
 
@@ -593,11 +651,16 @@ class VideoPlayerV3ViewModel(
                 subtitleName = subtitle.langDoc
                 logger.info { "Subtitle url: ${subtitle.url}" }
                 val client = HttpClient(OkHttp)
-                val responseText = client.get(subtitle.url).bodyAsText()
-                val subtitleData = SubtitleParser.fromBccString(responseText)
-                withContext(Dispatchers.Main) {
-                    currentSubtitleId = id
-                    currentSubtitleData.swapList(subtitleData)
+                try {
+                    val responseText = client.get(subtitle.url).bodyAsText()
+                    val subtitleData = SubtitleParser.fromBccString(responseText)
+                    withContext(Dispatchers.Main) {
+                        currentSubtitleId = id
+                        currentSubtitleData.swapList(subtitleData)
+                    }
+                } finally {
+                    // HttpClient 不关闭会泄漏连接池和线程
+                    client.close()
                 }
             }.onFailure {
                 logger.fInfo { "Load subtitle failed: ${it.stackTraceToString()}" }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +49,7 @@ import dev.aaa1115910.bv.ui.theme.BVTheme
 import dev.aaa1115910.bv.util.LogCatcherUtil
 import dev.aaa1115910.bv.util.swapList
 import dev.aaa1115910.bv.util.toast
+import kotlinx.coroutines.delay
 import java.io.File
 import java.net.Inet4Address
 import java.net.NetworkInterface
@@ -68,8 +70,12 @@ fun LogsScreen(
     var qrContent by remember { mutableStateOf("") }
 
     val updateQRCode = {
-        val url = "http://$host:$port/api/logs/${currentSelectFile?.name}"
-        qrContent = url
+        val fileName = currentSelectFile?.name
+        qrContent = if (fileName == null || port == 0) {
+            ""
+        } else {
+            "http://$host:$port/api/logs/${Uri.encode(fileName)}"
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -118,7 +124,15 @@ fun LogsScreen(
 
     LaunchedEffect(Unit) {
         host = getIpAddress()
-        port = HttpServer.server?.engine?.resolvedConnectors()?.first()?.port ?: 0
+        // HttpServer 是异步启动的，resolvedConnectors 在启动完成前可能拿不到端口
+        var attempts = 0
+        while (port == 0 && attempts < 50) {
+            port = HttpServer.server?.engine?.resolvedConnectors()?.firstOrNull()?.port ?: 0
+            if (port == 0) {
+                delay(100)
+                attempts++
+            }
+        }
 
         updateLogs()
     }

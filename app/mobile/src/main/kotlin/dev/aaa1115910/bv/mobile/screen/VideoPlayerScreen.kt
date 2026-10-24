@@ -297,6 +297,7 @@ fun VideoPlayerScreen(
                             isFullScreen = isVideoFullscreen,
                             videoPlayer = playerViewModel.videoPlayer!!,
                             danmakuPlayer = playerViewModel.danmakuPlayer,
+                            onUpdateDanmakuForPosition = playerViewModel::updateDanmakuForPosition,
                             onClearBackToHistoryData = { playerViewModel.lastPlayed = 0 },
                             onEnterFullScreen = {
                                 isVideoFullscreen = true

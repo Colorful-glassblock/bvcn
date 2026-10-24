@@ -89,7 +89,7 @@ object LogCatcherUtil {
     private fun createFilename(manual: Boolean): String {
         var filename = ""
         filename += if (manual) MANUAL_LOG_PREFIX else CRASH_LOG_PREFIX
-        val date = SimpleDateFormat("yyyy-MM-dd_HH:mm:ss", Locale.getDefault()).format(Date())
+        val date = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault()).format(Date())
         filename += "_$date.log"
         return filename
     }
