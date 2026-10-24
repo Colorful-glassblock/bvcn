@@ -2,6 +2,16 @@ name: CI
 
 on:
   pull_request:
+  # 在默认分支上写入 Gradle cache；PR run 默认只读，必须靠这里的 run 来暖缓存
+  push:
+    branches:
+      - lastAndroid5
+    paths:
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'buildSrc/**'
+      - '**/*.gradle.kts'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 concurrency:
