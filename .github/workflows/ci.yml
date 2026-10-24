@@ -2,16 +2,7 @@ name: CI
 
 on:
   pull_request:
-  # 默认分支上跑一次，把共享的 Gradle cache 写进去；PR run 默认只读
-  push:
-    branches:
-      - develop
-    paths:
-      - 'gradle.properties'
-      - 'gradle/**'
-      - 'buildSrc/**'
-      - '**/*.gradle.kts'
-      - '.github/workflows/ci.yml'
+  # cache 由 alpha.yml 在 develop push 时写入，PR run 只负责 restore
   workflow_dispatch:
 
 concurrency:
