@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-  # 在默认分支上写入 Gradle cache；PR run 默认只读，必须靠这里的 run 来暖缓存
+  # 默认分支上跑一次，把共享的 Gradle cache 写进去；PR run 默认只读
   push:
     branches:
       - develop
@@ -37,8 +37,16 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Restore Gradle cache
+        id: gradle-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml', 'gradle/*.toml', 'gradle.properties', 'buildSrc/**') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Write google-services.json
         env:
@@ -53,3 +61,12 @@ jobs:
 
       - name: Build debug apk
         run: ./gradlew assembleDefaultDebug
+
+      - name: Save Gradle cache
+        if: always() && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
