@@ -91,6 +91,7 @@ class VideoPlayerV3Activity : ComponentActivity() {
     }
 
     private fun initVideoPlayer() {
+        if (playerViewModel.videoPlayer != null) return
         dev.aaa1115910.bv.tv.activities.video.VideoPlayerV3Activity.Companion.logger.info { "Init video player: ${Prefs.playerType.name}" }
         val options = VideoPlayerOptions(
             userAgent = when (Prefs.apiType) {

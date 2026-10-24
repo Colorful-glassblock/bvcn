@@ -1,5 +1,6 @@
 package dev.aaa1115910.bv.player.impl.exo
 
+import android.app.ActivityManager
 import android.content.Context
 import androidx.annotation.OptIn
 import androidx.media3.common.C
@@ -12,6 +13,8 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
+import androidx.media3.exoplayer.mediacodec.MediaCodecUtil
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
@@ -35,16 +38,38 @@ class ExoMediaPlayer(
 
     // 错误重试计数
     private var errorRetryCount = 0
-    private val maxRetryCount = 3
+    private val maxRetryCount = 2
+
+    private val isLowRamDevice: Boolean
+        get() {
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            // isLowRamDevice 不一定覆盖所有廉价盒子，heap 上限 <= 256MB 也按低内存处理
+            return activityManager.isLowRamDevice || activityManager.memoryClass <= 256
+        }
+
+    // 只选软件解码器；设备上没有软件解码器时退回默认列表，避免完全无法播放
+    @OptIn(UnstableApi::class)
+    private val softwareVideoCodecSelector = MediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
+        val decoders = MediaCodecUtil.getDecoderInfos(
+            mimeType,
+            requiresSecureDecoder,
+            requiresTunnelingDecoder
+        )
+        if (mimeType.startsWith("video/")) {
+            decoders.filter { !it.hardwareAccelerated }.ifEmpty { decoders }
+        } else {
+            decoders
+        }
+    }
 
     @OptIn(UnstableApi::class)
     private val dataSourceFactory = OkHttpDataSource.Factory(
         OkHttpUtil.generateCustomSslOkHttpClient(context).newBuilder()
             .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)       // 增大读超时（视频数据块较大）
-            .writeTimeout(10, TimeUnit.SECONDS)      // 添加写超时
-            .retryOnConnectionFailure(true)          // 连接失败自动重试
-            .connectionPool(ConnectionPool(5, 60, TimeUnit.SECONDS)) // 连接池复用
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .connectionPool(ConnectionPool(5, 60, TimeUnit.SECONDS))
             .build()
     ).apply {
         options.userAgent?.let { setUserAgent(it) }
@@ -64,23 +89,26 @@ class ExoMediaPlayer(
                     false -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
                 }
             )
-            // 启用软解时，强制使用软件视频解码器
+            // 硬解失败时允许回退到软解
+            setEnableDecoderFallback(true)
             if (options.enableSoftwareVideoRenderer) {
-                setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+                setMediaCodecSelector(softwareVideoCodecSelector)
             }
         }
 
-        // ★ 自定义缓冲策略 - 解决播放卡死的核心优化
+        // 低内存设备（很多 Android 5 TV 盒子）不能再按 2 分钟时长硬缓冲，否则很容易 OOM
+        val lowRam = isLowRamDevice
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs = */ 50_000,                   // 最小缓冲 50 秒（默认 15s 对 B 站 CDN 太小）
-                /* maxBufferMs = */ 120_000,                  // 最大缓冲 2 分钟
-                /* bufferForPlaybackMs = */ 2_500,            // 初始播放前需缓冲 2.5 秒
-                /* bufferForPlaybackAfterRebufferMs = */ 5_000 // 重新缓冲后需要 5 秒才恢复播放（避免频繁卡顿）
+                /* minBufferMs = */ if (lowRam) 20_000 else 50_000,
+                /* maxBufferMs = */ if (lowRam) 40_000 else 120_000,
+                /* bufferForPlaybackMs = */ 2_500,
+                /* bufferForPlaybackAfterRebufferMs = */ if (lowRam) 3_000 else 5_000
             )
-            .setPrioritizeTimeOverSizeThresholds(true)
+            // 低内存设备按大小阈值提前停止加载；高内存设备才按时间优先
+            .setPrioritizeTimeOverSizeThresholds(!lowRam)
             .setBackBuffer(
-                /* backBufferDurationMs = */ 30_000,          // 保留 30 秒回看缓冲（方便快速回退）
+                /* backBufferDurationMs = */ if (lowRam) 0 else 30_000,
                 /* retainBackBufferFromKeyframe = */ true
             )
             .build()
@@ -161,6 +189,8 @@ class ExoMediaPlayer(
 
     override fun release() {
         mPlayer?.release()
+        mPlayer = null
+        mMediaSource = null
     }
 
     override val currentPosition: Long
