@@ -12,29 +12,14 @@ import dev.aaa1115910.bv.mobile.theme.BVMobileTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 检测是否在 TV 上运行，如果是则跳转到 TV 版
-        if (isTvDevice()) {
-            try {
-                val tvMainActivity = Intent().apply {
-                    setClassName(
-                        this@MainActivity,
-                        "dev.aaa1115910.bv.tv.activities.MainActivity"
-                    )
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                startActivity(tvMainActivity)
-                finish()
-                return
-            } catch (e: Exception) {
-                // TV 版 Activity 不存在，继续使用手机版
-            }
-        }
-
         var keepSplashScreen = true
         installSplashScreen().apply {
             setKeepOnScreenCondition { keepSplashScreen }
         }
         super.onCreate(savedInstanceState)
+
+        // 检测是否在 TV 上运行，如果是则跳转到 TV 版
+        if (redirectToTv()) return
 
         setContent {
             keepSplashScreen = false
@@ -42,6 +27,26 @@ class MainActivity : ComponentActivity() {
             BVMobileTheme {
                 MobileMainScreen()
             }
+        }
+    }
+
+    private fun redirectToTv(): Boolean {
+        if (!isTvDevice()) return false
+        return try {
+            startActivity(
+                Intent().apply {
+                    setClassName(
+                        this@MainActivity,
+                        "dev.aaa1115910.bv.tv.activities.MainActivity"
+                    )
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+            finish()
+            true
+        } catch (e: Exception) {
+            // TV 版 Activity 不存在，继续使用手机版
+            false
         }
     }
 

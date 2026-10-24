@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -77,7 +78,8 @@ fun BvPlayer(
     onLoadNextVideo: () -> Unit,
     onLoadNewVideo: (VideoListItem) -> Unit,
     videoPlayer: AbstractVideoPlayer,
-    danmakuPlayer: DanmakuPlayer?
+    danmakuPlayer: DanmakuPlayer?,
+    onUpdateDanmakuForPosition: (suspend (Long) -> Unit)? = null
 ) {
     val logger = KotlinLogging.logger("BvPlayer")
     // 直接调用 danmakuPlayer 会始终为 null
@@ -260,9 +262,16 @@ fun BvPlayer(
     }
 
     // ★ 优化：位置更新频率调整，减少主线程压力
+    val currentOnUpdateDanmakuForPosition by rememberUpdatedState(onUpdateDanmakuForPosition)
+    var lastDanmakuSegmentCheckTime by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
         while (true) {
             updatePosition()
+            val now = System.currentTimeMillis()
+            if (now - lastDanmakuSegmentCheckTime > 5_000L) {
+                lastDanmakuSegmentCheckTime = now
+                currentOnUpdateDanmakuForPosition?.invoke(currentPosition)
+            }
             delay(250) // 从 200ms 调整为 250ms，减少不必要的重组
         }
     }
