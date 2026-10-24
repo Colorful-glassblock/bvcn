@@ -25,8 +25,17 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Restore Gradle cache
+        id: gradle-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-la5-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml', 'gradle/*.toml', 'gradle.properties', 'buildSrc/**') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-la5-
+            ${{ runner.os }}-gradle-
 
       - name: Write google-services.json
         env:
@@ -38,6 +47,15 @@ jobs:
 
       - name: Build apk
         run: ./gradlew assembleDefaultAlpha assembleDefaultDebug
+
+      - name: Save Gradle cache
+        if: always() && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
 
       - name: Read alpha apk output metadata
         id: apk-meta-alpha
