@@ -682,7 +682,7 @@ data class DynamicItem(
                     aid = moduleDynamic.aid,
                     bvid = moduleDynamic.bvid,
                     cover = moduleDynamic.cover,
-                    desc = moduleDynamic.desc,
+                    desc = moduleDynamic.desc ?: "empty description",
                     duration = moduleDynamic.durationText,
                     url = moduleDynamic.jumpUrl,
                     play = moduleDynamic.stat.play,
