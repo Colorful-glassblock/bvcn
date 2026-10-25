@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import dev.aaa1115910.bv.mobile.screen.settings.details.AboutContent
 import dev.aaa1115910.bv.mobile.screen.settings.details.AdvanceContent
 import dev.aaa1115910.bv.mobile.screen.settings.details.DebugContent
+import dev.aaa1115910.bv.mobile.screen.settings.details.NetworkContent
+import dev.aaa1115910.bv.mobile.screen.settings.details.OtherContent
 import dev.aaa1115910.bv.mobile.screen.settings.details.PlayContent
 
 @OptIn(ExperimentalMaterial3Api::class)
