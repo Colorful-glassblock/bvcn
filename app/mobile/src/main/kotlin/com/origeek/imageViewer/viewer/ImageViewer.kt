@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.origeek.imageViewer.viewer
 
 import androidx.compose.animation.core.Animatable
@@ -562,7 +564,7 @@ fun ImageViewer(
             if (reachSide || state.scale.value < 1) {
                 event.changes.fastForEach {
                     if (it.positionChanged()) {
-                        it.consumeAllChanges()
+                        it.consume()
                     }
                 }
             }
@@ -688,7 +690,7 @@ suspend fun PointerInputScope.detectTransformGestures(
                 val event = awaitPointerEvent()
                 if (event.type == PointerEventType.Release) releasedEvent = event
                 if (event.type == PointerEventType.Move) moveCount++
-                val canceled = event.changes.fastAny { it.positionChangeConsumed() }
+                val canceled = event.changes.fastAny { it.isConsumed }
                 if (!canceled) {
                     val zoomChange = event.calculateZoom()
                     val rotationChange = event.calculateRotation()

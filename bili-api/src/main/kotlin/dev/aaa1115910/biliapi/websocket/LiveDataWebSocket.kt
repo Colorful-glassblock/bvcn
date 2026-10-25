@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package dev.aaa1115910.biliapi.websocket
 
 import dev.aaa1115910.biliapi.http.BiliLiveHttpApi
