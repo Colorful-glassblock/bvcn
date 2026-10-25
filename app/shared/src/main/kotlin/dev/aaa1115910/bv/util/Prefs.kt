@@ -334,7 +334,7 @@ object Prefs {
             dsm.editPreference(PrefKeys.prefEnableSponsorBlock, value)
         }
 
-    /** 每个 SponsorBlock 分类的处理方式，按 SponsorBlockCategory 顺序存 ordinal */
+    /** 每个 SponsorBlock 分类的处理方式，按 [SponsorBlockCategory] 顺序存 ordinal */
     var sponsorBlockSettings: List<SponsorSkipType>
         get() = runBlocking {
             val raw = dsm.getPreferenceFlow(PrefKeys.prefSponsorBlockSettingsRequest).first()
@@ -360,6 +360,7 @@ object Prefs {
             dsm.editPreference(PrefKeys.prefSponsorBlockMinDuration, value)
         }
 
+    /** 设置某个分类的处理方式 */
     fun setSponsorBlockSkipType(category: SponsorBlockCategory, type: SponsorSkipType) {
         val current = sponsorBlockSettings.toMutableList()
         current[category.ordinal] = type

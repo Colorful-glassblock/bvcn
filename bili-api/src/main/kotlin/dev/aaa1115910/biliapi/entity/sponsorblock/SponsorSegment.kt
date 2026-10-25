@@ -36,21 +36,44 @@ data class SponsorSegment(
 }
 
 /**
+ * 每个分类的处理方式，语义参考 PiliPlus
+ */
+enum class SponsorSkipType(val displayName: String) {
+    AlwaysSkip("总是跳过"),
+    SkipOnce("跳过一次"),
+    Manual("手动跳过"),
+    ShowOnly("仅显示"),
+    Disabled("禁用");
+
+    companion object {
+        fun fromOrdinal(ordinal: Int): SponsorSkipType =
+            entries.getOrElse(ordinal) { SkipOnce }
+    }
+}
+
+/**
  * SponsorBlock 分类，取值与 BilibiliSponsorBlock 一致
  */
-enum class SponsorBlockCategory(val value: String, val displayName: String) {
-    Sponsor("sponsor", "赞助/恰饭"),
-    SelfPromo("selfpromo", "无偿/自我推广"),
-    ExclusiveAccess("exclusive_access", "独家访问"),
-    Interaction("interaction", "三连/互动提醒"),
-    PoiHighlight("poi_highlight", "精彩时刻"),
-    Intro("intro", "过场/开场动画"),
-    Outro("outro", "鸣谢/结束画面"),
-    Preview("preview", "回顾/概要"),
-    Padding("padding", "填充内容"),
-    Filler("filler", "离题闲聊"),
-    MusicOffTopic("music_offtopic", "音乐:非音乐部分"),
-    Jumpscare("jumpscare", "惊吓片段");
+enum class SponsorBlockCategory(
+    val value: String,
+    val displayName: String,
+    val shortName: String,
+    /** 颜色，用于进度条标记 */
+    val color: Long,
+    val defaultSkipType: SponsorSkipType
+) {
+    Sponsor("sponsor", "赞助/恰饭", "赞助", 0xFF00D400, SponsorSkipType.SkipOnce),
+    SelfPromo("selfpromo", "无偿/自我推广", "推广", 0xFFFFFF00, SponsorSkipType.Manual),
+    ExclusiveAccess("exclusive_access", "独家访问/抢先体验", "品牌合作", 0xFF008A5C, SponsorSkipType.ShowOnly),
+    Interaction("interaction", "三连/互动提醒", "三连提醒", 0xFFCC00FF, SponsorSkipType.Manual),
+    PoiHighlight("poi_highlight", "精彩时刻/重点", "精彩时刻", 0xFFFF1684, SponsorSkipType.ShowOnly),
+    Intro("intro", "过场/开场动画", "开场动画", 0xFF00FFFF, SponsorSkipType.SkipOnce),
+    Outro("outro", "鸣谢/结束画面", "片尾", 0xFF0202ED, SponsorSkipType.SkipOnce),
+    Preview("preview", "回顾/概要", "预览", 0xFF008FD6, SponsorSkipType.Manual),
+    Padding("padding", "填充内容/前黑/后黑", "填充内容", 0xFF222222, SponsorSkipType.SkipOnce),
+    Filler("filler", "离题闲聊/玩笑", "离题", 0xFF7300FF, SponsorSkipType.Disabled),
+    MusicOffTopic("music_offtopic", "音乐:非音乐部分", "非音乐", 0xFFFF9900, SponsorSkipType.Disabled),
+    Jumpscare("jumpscare", "惊吓片段", "惊吓", 0xFFE53935, SponsorSkipType.Disabled);
 
     companion object {
         fun fromValue(value: String): SponsorBlockCategory? =

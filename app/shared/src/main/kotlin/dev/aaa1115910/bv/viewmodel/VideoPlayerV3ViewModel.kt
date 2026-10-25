@@ -26,6 +26,7 @@ import dev.aaa1115910.biliapi.entity.video.SubtitleType
 import dev.aaa1115910.biliapi.entity.video.VideoShot
 import dev.aaa1115910.biliapi.http.BiliHttpApi
 import dev.aaa1115910.biliapi.entity.sponsorblock.SponsorBlockCategory
+import dev.aaa1115910.biliapi.entity.sponsorblock.SponsorSkipType
 import dev.aaa1115910.biliapi.repositories.SponsorBlockRepository
 import dev.aaa1115910.biliapi.repositories.VideoPlayRepository
 import dev.aaa1115910.bilisubtitle.SubtitleParser
@@ -38,6 +39,7 @@ import dev.aaa1115910.bv.player.entity.DanmakuType
 import dev.aaa1115910.bv.player.entity.RequestState
 import dev.aaa1115910.bv.player.entity.SkipInfo
 import dev.aaa1115910.bv.player.entity.SponsorSegmentInfo
+import dev.aaa1115910.bv.player.entity.SponsorSegmentSkipType
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoAspectRatio
 import dev.aaa1115910.bv.player.entity.VideoCodec
@@ -247,17 +249,27 @@ class VideoPlayerV3ViewModel(
                 return@runCatching
             }
             val segments = sponsorBlockRepository.getSkipSegments(bvid, currentCid)
+            val settings = Prefs.sponsorBlockSettings
+            val minDurationMs = Prefs.sponsorBlockMinDuration * 1000L
             val filtered = segments
                 .mapNotNull { segment ->
                     val category = SponsorBlockCategory.fromValue(segment.category)
                         ?: return@mapNotNull null
-                    if (category.value !in Prefs.sponsorBlockCategories) return@mapNotNull null
-                    // 时长过短的片段跳过没有意义，还容易误触发
-                    if (segment.durationMs < Prefs.sponsorBlockMinDuration * 1000L) return@mapNotNull null
+                    val skipType = settings.getOrNull(category.ordinal)
+                        ?: category.defaultSkipType
+                    if (skipType == SponsorSkipType.Disabled) return@mapNotNull null
+                    // 时长过短的片段跳过没有意义，还容易误触发（"仅显示"不受此限制）
+                    if (skipType != SponsorSkipType.ShowOnly && segment.durationMs < minDurationMs) {
+                        return@mapNotNull null
+                    }
+                    if (segment.endMs <= segment.startMs) return@mapNotNull null
                     SponsorSegmentInfo(
                         uuid = segment.uuid,
                         category = category.value,
                         categoryName = category.displayName,
+                        shortName = category.shortName,
+                        color = category.color,
+                        skipType = skipType.toPlayerSkipType(),
                         startMs = segment.startMs,
                         endMs = segment.endMs
                     )
@@ -839,4 +851,12 @@ class VideoPlayerV3ViewModel(
             logger.fWarn { "Load video shot failed: ${it.stackTraceToString()}" }
         }
     }
+}
+
+private fun SponsorSkipType.toPlayerSkipType(): SponsorSegmentSkipType = when (this) {
+    SponsorSkipType.AlwaysSkip -> SponsorSegmentSkipType.AlwaysSkip
+    SponsorSkipType.SkipOnce -> SponsorSegmentSkipType.SkipOnce
+    SponsorSkipType.Manual -> SponsorSegmentSkipType.Manual
+    SponsorSkipType.ShowOnly -> SponsorSegmentSkipType.ShowOnly
+    SponsorSkipType.Disabled -> SponsorSegmentSkipType.Disabled
 }

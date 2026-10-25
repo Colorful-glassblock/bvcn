@@ -107,18 +107,44 @@ data class SkipInfo(
 /**
  * SponsorBlock 片段，时间单位毫秒
  *
- * @param category 分类值，见 SponsorBlockCategory
+ * @param category 分类值
  * @param categoryName 分类显示名
+ * @param shortName 分类简称，用于提示文案
+ * @param color 进度条标记颜色，ARGB
+ * @param skipType 该片段的处理方式，取自用户设置
+ * @param hasSkipped 是否已经跳过（跳过一次时用）
  */
 data class SponsorSegmentInfo(
     val uuid: String,
     val category: String,
     val categoryName: String,
+    val shortName: String,
+    val color: Long,
+    val skipType: SponsorSegmentSkipType = SponsorSegmentSkipType.SkipOnce,
     val startMs: Long,
     val endMs: Long,
     val hasSkipped: Boolean = false
 ) {
     fun contains(positionMs: Long): Boolean = positionMs in startMs until endMs
+
+    /** 是否会在进入时自动跳转 */
+    val autoSkip: Boolean
+        get() = when (skipType) {
+            SponsorSegmentSkipType.AlwaysSkip -> true
+            SponsorSegmentSkipType.SkipOnce -> !hasSkipped
+            else -> false
+        }
+}
+
+/**
+ * player 模块内的跳过方式，避免依赖 bili-api
+ */
+enum class SponsorSegmentSkipType {
+    AlwaysSkip,
+    SkipOnce,
+    Manual,
+    ShowOnly,
+    Disabled
 }
 
 data class VideoPlayerDanmakuMasksData(

@@ -22,9 +22,11 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import dev.aaa1115910.biliapi.entity.video.VideoShot
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekThumbData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerVideoShotData
+import dev.aaa1115910.bv.player.seekbar.SeekBarSegment
 import dev.aaa1115910.bv.player.seekbar.SeekMoveState
 import dev.aaa1115910.bv.player.tv.VideoSeekBar
 
@@ -55,7 +57,14 @@ fun SeekController(
                 moveState = moveState,
                 idleIcon = videoPlayerSeekThumbData.idleIcon,
                 movingIcon = videoPlayerSeekThumbData.movingIcon,
-                videoShot = videoPlayerVideoShotData.videoShot
+                videoShot = videoPlayerVideoShotData.videoShot,
+                segments = LocalVideoPlayerConfigData.current.sponsorSegments
+                    .filter {
+                        it.skipType != dev.aaa1115910.bv.player.entity.SponsorSegmentSkipType.Disabled
+                    }
+                    .map {
+                        SeekBarSegment(startMs = it.startMs, endMs = it.endMs, color = it.color)
+                    }
             )
         }
     }
@@ -69,7 +78,8 @@ private fun SeekController(
     moveState: SeekMoveState,
     idleIcon: String,
     movingIcon: String,
-    videoShot: VideoShot? = null
+    videoShot: VideoShot? = null,
+    segments: List<SeekBarSegment> = emptyList()
 ) {
     Column(
         modifier = modifier,

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -95,9 +96,10 @@ fun VideoPlayerController(
     val currentSkipTarget: () -> Long? = {
         val positionMs = videoPlayerSeekData.position
 
-        // SponsorBlock 片段优先
+        // SponsorBlock 片段优先；"仅显示"不算可跳转目标
         val sponsor = videoPlayerConfigData.sponsorSegments.firstOrNull {
-            it.contains(positionMs) && !it.hasSkipped
+            it.contains(positionMs) &&
+                it.skipType != dev.aaa1115910.bv.player.entity.SponsorSegmentSkipType.ShowOnly
         }
 
         if (sponsor != null) {
@@ -125,6 +127,16 @@ fun VideoPlayerController(
                 }
             }
         }
+    }
+
+    // 总是跳过的片段：进入区间后自动跳走，不需要用户按确认键
+    LaunchedEffect(videoPlayerSeekData.position, videoPlayerConfigData.sponsorSegments.size) {
+        val positionMs = videoPlayerSeekData.position
+        val segment = videoPlayerConfigData.sponsorSegments.firstOrNull {
+            it.autoSkip && it.contains(positionMs)
+        } ?: return@LaunchedEffect
+        onGoTime(segment.endMs)
+        logger.info { "Auto skipped ${segment.categoryName} segment to ${segment.endMs}" }
     }
 
     var showListController by remember { mutableStateOf(false) }
