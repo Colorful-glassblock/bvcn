@@ -1,6 +1,7 @@
 package dev.aaa1115910.bv.util
 
 import dev.aaa1115910.bv.BVApp
+import androidx.core.content.pm.PackageInfoCompat
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.io.BufferedReader
 import java.io.File
@@ -65,7 +66,7 @@ object LogCatcherUtil {
     private fun OutputStreamWriter.writeDeviceInfo() {
         val info = BVApp.context.packageManager.getPackageInfo(BVApp.context.packageName, 0)
         appendLine("======== Device info ========")
-        appendLine("App Version: ${info.versionName} (${info.versionCode})")
+        appendLine("App Version: ${info.versionName} (${PackageInfoCompat.getLongVersionCode(info)})")
         appendLine("Android Version: ${android.os.Build.VERSION.RELEASE} (${android.os.Build.VERSION.SDK_INT})")
         appendLine("Device: ${android.os.Build.DEVICE}")
         appendLine("Model: ${android.os.Build.MODEL}")

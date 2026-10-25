@@ -25,6 +25,10 @@ dependencies {
     testImplementation(libs.kotlin.test)
 }
 
+ksp {
+    arg("KOIN_DEFAULT_MODULE", "true")
+}
+
 tasks.test {
     useJUnitPlatform()
 }

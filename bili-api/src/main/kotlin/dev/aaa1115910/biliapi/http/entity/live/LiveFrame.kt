@@ -1,4 +1,4 @@
-@file:Suppress("unused", "UNUSED_VARIABLE")
+@file:Suppress("unused", "UNUSED_VARIABLE", "DEPRECATION")
 
 package dev.aaa1115910.biliapi.http.entity.live
 
