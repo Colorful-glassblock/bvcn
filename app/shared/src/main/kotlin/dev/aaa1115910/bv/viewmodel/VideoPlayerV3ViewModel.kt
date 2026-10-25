@@ -24,8 +24,9 @@ import dev.aaa1115910.biliapi.entity.video.SubtitleAiStatus
 import dev.aaa1115910.biliapi.entity.video.SubtitleAiType
 import dev.aaa1115910.biliapi.entity.video.SubtitleType
 import dev.aaa1115910.biliapi.entity.video.VideoShot
-import dev.aaa1115910.biliapi.entity.video.season.Episode
 import dev.aaa1115910.biliapi.http.BiliHttpApi
+import dev.aaa1115910.biliapi.entity.sponsorblock.SponsorBlockCategory
+import dev.aaa1115910.biliapi.repositories.SponsorBlockRepository
 import dev.aaa1115910.biliapi.repositories.VideoPlayRepository
 import dev.aaa1115910.bilisubtitle.SubtitleParser
 import dev.aaa1115910.bilisubtitle.entity.SubtitleItem
@@ -37,6 +38,7 @@ import dev.aaa1115910.bv.player.entity.DanmakuType
 import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.RequestState
 import dev.aaa1115910.bv.player.entity.SkipInfo
+import dev.aaa1115910.bv.player.entity.SponsorSegmentInfo
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoAspectRatio
 import dev.aaa1115910.bv.player.entity.VideoCodec
@@ -64,6 +66,7 @@ import java.net.URI
 class VideoPlayerV3ViewModel(
     private val videoInfoRepository: VideoInfoRepository,
     private val videoPlayRepository: VideoPlayRepository,
+    private val sponsorBlockRepository: SponsorBlockRepository,
 ) : ViewModel() {
     private val logger = KotlinLogging.logger { }
 
@@ -114,6 +117,8 @@ class VideoPlayerV3ViewModel(
     var lastPlayed by mutableIntStateOf(0)
     /** 当前分集的片头/片尾时间，仅 PGC 有值 */
     var currentSkipInfo by mutableStateOf<SkipInfo?>(null)
+    /** SponsorBlock 片段（已按用户设置过滤） */
+    val sponsorSegments = mutableStateListOf<SponsorSegmentInfo>()
     var fromSeason by mutableStateOf(false)
     var subType by mutableIntStateOf(0)
     var epid by mutableIntStateOf(0)
@@ -185,6 +190,7 @@ class VideoPlayerV3ViewModel(
             updateSubtitle()
             loadEpisodeSkipInfo(epid ?: 0)
             loadPlayUrl(avid, cid, epid ?: 0, preferApi = Prefs.apiType, proxyArea = proxyArea)
+            loadSponsorSegments(avid, epid ?: 0)
             addLogs("加载弹幕中")
             loadDanmaku(cid)
             updateDanmakuMask()
@@ -230,6 +236,65 @@ class VideoPlayerV3ViewModel(
             logger.fInfo { "Load skip info failed: ${it.localizedMessage}" }
             withContext(Dispatchers.Main) { currentSkipInfo = null }
         }
+    }
+
+    /**
+     * 拉取 SponsorBlock 片段。需要 bvid，Pgc 播放时若拿不到 bvid 就跳过。
+     */
+    private suspend fun loadSponsorSegments(avid: Long, epid: Int) {
+        withContext(Dispatchers.Main) { sponsorSegments.clear() }
+        if (!Prefs.enableSponsorBlock) return
+        runCatching {
+            val bvid = resolveBvid(avid, epid)
+            if (bvid.isNullOrBlank()) {
+                logger.fInfo { "SponsorBlock skipped: no bvid for av$avid ep$epid" }
+                return@runCatching
+            }
+            val segments = sponsorBlockRepository.getSkipSegments(bvid, currentCid)
+            val filtered = segments
+                .mapNotNull { segment ->
+                    val category = SponsorBlockCategory.fromValue(segment.category)
+                        ?: return@mapNotNull null
+                    if (category.value !in Prefs.sponsorBlockCategories) return@mapNotNull null
+                    // 时长过短的片段跳过没有意义，还容易误触发
+                    if (segment.durationMs < Prefs.sponsorBlockMinDuration * 1000L) return@mapNotNull null
+                    SponsorSegmentInfo(
+                        uuid = segment.uuid,
+                        category = category.value,
+                        categoryName = category.displayName,
+                        startMs = segment.startMs,
+                        endMs = segment.endMs
+                    )
+                }
+                .sortedBy { it.startMs }
+            withContext(Dispatchers.Main) {
+                sponsorSegments.clear()
+                sponsorSegments.addAll(filtered)
+            }
+            addLogs("SponsorBlock：${filtered.size} 个片段")
+            logger.fInfo { "SponsorBlock loaded ${filtered.size} segments for $bvid" }
+        }.onFailure {
+            logger.fInfo { "Load sponsor block failed: ${it.localizedMessage}" }
+        }
+    }
+
+    /** PGC 用 epid 换 bvid，普通投稿直接用 avid */
+    private suspend fun resolveBvid(avid: Long, epid: Int): String? {
+        if (avid > 0) {
+            return runCatching {
+                BiliHttpApi.getVideoInfo(av = avid.toInt()).getResponseData().bvid
+            }.getOrNull()?.takeIf { it.isNotBlank() }
+        }
+        if (epid > 0) {
+            return runCatching {
+                val seasonData = BiliHttpApi.getWebSeasonInfo(
+                    epId = epid,
+                    sessData = Prefs.sessData
+                ).getResponseData()
+                seasonData.episodes.firstOrNull { it.epId == epid || it.id == epid }?.bvid
+            }.getOrNull()?.takeIf { it.isNotBlank() }
+        }
+        return null
     }
 
     private suspend fun loadPlayUrl(

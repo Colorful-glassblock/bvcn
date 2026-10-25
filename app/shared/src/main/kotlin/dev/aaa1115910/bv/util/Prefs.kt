@@ -330,6 +330,41 @@ object Prefs {
             PlayMode.entries[dsm.getPreferenceFlow(PrefKeys.prefPlayModeRequest).first()]
         }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayModeKey, value.ordinal) }
+
+    /** 是否启用 SponsorBlock 赞助片段拦截 */
+    var enableSponsorBlock: Boolean
+        get() = runBlocking {
+            dsm.getPreferenceFlow(PrefKeys.prefEnableSponsorBlockRequest).first()
+        }
+        set(value) = runBlocking {
+            dsm.editPreference(PrefKeys.prefEnableSponsorBlock, value)
+        }
+
+    /** 需要拦截的分类，存逗号分隔的分类值 */
+    var sponsorBlockCategories: Set<String>
+        get() = runBlocking {
+            val raw = dsm.getPreferenceFlow(PrefKeys.prefSponsorBlockCategoriesRequest).first()
+            if (raw.isBlank()) DEFAULT_SPONSOR_BLOCK_CATEGORIES
+            else raw.split(',').filter { it.isNotBlank() }.toSet()
+        }
+        set(value) = runBlocking {
+            dsm.editPreference(
+                PrefKeys.prefSponsorBlockCategories,
+                value.joinToString(",")
+            )
+        }
+
+    /** 片段最短时长（秒），更短的片段忽略，避免误跳过 */
+    var sponsorBlockMinDuration: Int
+        get() = runBlocking {
+            dsm.getPreferenceFlow(PrefKeys.prefSponsorBlockMinDurationRequest).first()
+        }
+        set(value) = runBlocking {
+            dsm.editPreference(PrefKeys.prefSponsorBlockMinDuration, value)
+        }
+
+    /** 默认只拦赞助和片头片尾，其余分类噪音大 */
+    val DEFAULT_SPONSOR_BLOCK_CATEGORIES = setOf("sponsor", "intro", "outro")
 }
 
 object PrefKeys {
@@ -377,6 +412,9 @@ object PrefKeys {
     val prefBlacklistUserKey = booleanPreferencesKey("blacklist_user")
     val prefThemeTypeKey = intPreferencesKey("theme_type")
     val prefPlayModeKey = intPreferencesKey("play_mode")
+    val prefEnableSponsorBlock = booleanPreferencesKey("enable_sponsor_block")
+    val prefSponsorBlockCategories = stringPreferencesKey("sponsor_block_categories")
+    val prefSponsorBlockMinDuration = intPreferencesKey("sponsor_block_min_duration")
 
     val prefIsLoginRequest = PreferenceRequest(prefIsLoginKey, false)
     val prefUidRequest = PreferenceRequest(prefUidKey, 0)
@@ -436,4 +474,7 @@ object PrefKeys {
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Sequential.ordinal)
+    val prefEnableSponsorBlockRequest = PreferenceRequest(prefEnableSponsorBlock, false)
+    val prefSponsorBlockCategoriesRequest = PreferenceRequest(prefSponsorBlockCategories, "")
+    val prefSponsorBlockMinDurationRequest = PreferenceRequest(prefSponsorBlockMinDuration, 2)
 }

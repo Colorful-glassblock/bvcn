@@ -94,20 +94,29 @@ fun VideoPlayerController(
     val logger = KotlinLogging.logger {}
 
     // 当前是否处于可跳过的片头/片尾区间，返回需要跳到的秒数
-    val currentSkipTarget: () -> Int? = {
-        val skipInfo = videoPlayerConfigData.currentSkipInfo
-        if (skipInfo == null) {
-            null
+    val currentSkipTarget: () -> Long? = {
+        val positionMs = videoPlayerSeekData.position
+        // SponsorBlock 片段优先
+        val sponsor = videoPlayerConfigData.sponsorSegments.firstOrNull {
+            it.contains(positionMs) && !it.hasSkipped
+        }
+        if (sponsor != null) {
+            sponsor.endMs
         } else {
-            val positionSec = (videoPlayerSeekData.position / 1000).toInt()
-            val durationSec = (videoPlayerSeekData.duration / 1000).toInt()
-            when {
-                positionSec in skipInfo.opStart until skipInfo.opEnd -> skipInfo.opEnd
-                skipInfo.edStart > 0 &&
-                    positionSec >= skipInfo.edStart &&
-                    positionSec < (if (skipInfo.edEnd > skipInfo.edStart) skipInfo.edEnd else durationSec) ->
-                    if (skipInfo.edEnd > skipInfo.edStart) skipInfo.edEnd else durationSec
-                else -> null
+            val skipInfo = videoPlayerConfigData.currentSkipInfo
+            if (skipInfo == null) {
+                null
+            } else {
+                val positionSec = (positionMs / 1000).toInt()
+                val durationSec = (videoPlayerSeekData.duration / 1000).toInt()
+                when {
+                    positionSec in skipInfo.opStart until skipInfo.opEnd -> skipInfo.opEnd * 1000L
+                    skipInfo.edStart > 0 &&
+                        positionSec >= skipInfo.edStart &&
+                        positionSec < (if (skipInfo.edEnd > skipInfo.edStart) skipInfo.edEnd else durationSec) ->
+                        (if (skipInfo.edEnd > skipInfo.edStart) skipInfo.edEnd else durationSec) * 1000L
+                    else -> null
+                }
             }
         }
     }
@@ -209,7 +218,7 @@ fun VideoPlayerController(
                             val skipTarget = currentSkipTarget()
                             if (skipTarget != null) {
                                 if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
-                                onGoTime(skipTarget * 1000L)
+                                onGoTime(skipTarget)
                                 if (!videoPlayer.isPlaying) onPlay()
                                 return@onPreviewKeyEvent true
                             }
