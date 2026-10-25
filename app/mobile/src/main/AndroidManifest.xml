@@ -33,6 +33,11 @@
             android:label="@string/title_mobile_activity_settings"
             android:theme="@style/Theme.BV.Mobile" />
         <activity
+            android:name=".activities.LogsActivity"
+            android:exported="false"
+            android:label="@string/title_activity_logs"
+            android:theme="@style/Theme.BV.Mobile" />
+        <activity
             android:name=".activities.DynamicDetailActivity"
             android:exported="false"
             android:label="@string/title_mobile_activity_dynamic_detail"

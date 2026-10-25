@@ -54,5 +54,10 @@ fun PlayContent(
             summary = "使用软件解码器播放视频，可能解决硬解兼容性问题",
             prefReq = PrefKeys.prefEnableSoftwareVideoRendererRequest
         )
+        SwitchPreferenceItem(
+            title = "启用赞助片段拦截",
+            summary = "通过 BilibiliSponsorBlock 社区数据标记并跳过赞助片段",
+            prefReq = PrefKeys.prefEnableSponsorBlockRequest
+        )
     }
 }

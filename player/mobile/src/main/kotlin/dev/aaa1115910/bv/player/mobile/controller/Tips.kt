@@ -1,6 +1,7 @@
 package dev.aaa1115910.bv.player.mobile.controller
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -271,6 +272,36 @@ private fun VolumeTipPreview() {
     MaterialTheme {
         Surface {
             VolumeTip(show = true, progress = 0.3f)
+        }
+    }
+}
+
+/**
+ * 跳过提示，移动端点击后跳转
+ */
+@Composable
+fun SkipSegmentTip(
+    modifier: Modifier = Modifier,
+    show: Boolean,
+    text: String,
+    onClick: () -> Unit
+) {
+    if (!show) return
+    Box(modifier = modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 88.dp)
+                .clickable(onClick = onClick),
+            color = Color.Black.copy(alpha = 0.6f),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Text(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                text = text,
+                color = Color.White,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }

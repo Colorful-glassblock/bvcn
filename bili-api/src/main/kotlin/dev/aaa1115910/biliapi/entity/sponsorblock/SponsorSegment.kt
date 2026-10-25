@@ -36,7 +36,7 @@ data class SponsorSegment(
 }
 
 /**
- * 每个分类的处理方式，语义参考 PiliPlus
+ * 每个分类的处理方式
  */
 enum class SponsorSkipType(val displayName: String) {
     AlwaysSkip("总是跳过"),
@@ -52,7 +52,11 @@ enum class SponsorSkipType(val displayName: String) {
 }
 
 /**
- * SponsorBlock 分类，取值与 BilibiliSponsorBlock 一致
+ * SponsorBlock 分类。
+ *
+ * 分类标识符与颜色取自 BilibiliSponsorBlock 的公开 API 文档
+ * （https://github.com/hanydd/BilibiliSponsorBlock/wiki/API）与规范，
+ * 属于跨实现互操作所需的协议常量，不是从 GPL 项目复制的代码。
  */
 enum class SponsorBlockCategory(
     val value: String,
