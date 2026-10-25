@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -34,6 +35,7 @@ import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.DanmakuType
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerDebugInfoData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerHistoryData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekData
@@ -89,7 +91,55 @@ fun VideoPlayerController(
     val videoPlayerHistoryData = LocalVideoPlayerHistoryData.current
     val videoPlayerStateData = LocalVideoPlayerStateData.current
     val videoPlayerDebugInfoData = LocalVideoPlayerDebugInfoData.current
+    val videoPlayerConfigData = LocalVideoPlayerConfigData.current
     val logger = KotlinLogging.logger {}
+
+    // 当前是否处于可跳过的片头/片尾区间，返回需要跳到的毫秒数
+    val currentSkipTarget: () -> Long? = {
+        val positionMs = videoPlayerSeekData.position
+
+        // SponsorBlock 片段优先；"仅显示"不算可跳转目标
+        val sponsor = videoPlayerConfigData.sponsorSegments.firstOrNull {
+            it.contains(positionMs) &&
+                it.skipType != dev.aaa1115910.bv.player.entity.SponsorSegmentSkipType.ShowOnly
+        }
+
+        if (sponsor != null) {
+            sponsor.endMs
+        } else {
+            val skipInfo = videoPlayerConfigData.currentSkipInfo
+            when {
+                skipInfo == null -> null
+                else -> {
+                    val positionSec = (positionMs / 1000).toInt()
+                    val durationSec = (videoPlayerSeekData.duration / 1000).toInt()
+                    val edEndSec = if (skipInfo.edEnd > skipInfo.edStart) skipInfo.edEnd else durationSec
+
+                    when {
+                        positionSec in skipInfo.opStart until skipInfo.opEnd ->
+                            skipInfo.opEnd * 1000L
+
+                        skipInfo.edStart > 0 &&
+                            positionSec >= skipInfo.edStart &&
+                            positionSec < edEndSec ->
+                            edEndSec * 1000L
+
+                        else -> null
+                    }
+                }
+            }
+        }
+    }
+
+    // 总是跳过的片段：进入区间后自动跳走，不需要用户按确认键
+    LaunchedEffect(videoPlayerSeekData.position, videoPlayerConfigData.sponsorSegments.size) {
+        val positionMs = videoPlayerSeekData.position
+        val segment = videoPlayerConfigData.sponsorSegments.firstOrNull {
+            it.autoSkip && it.contains(positionMs)
+        } ?: return@LaunchedEffect
+        onGoTime(segment.endMs)
+        logger.info { "Auto skipped ${segment.categoryName} segment to ${segment.endMs}" }
+    }
 
     var showListController by remember { mutableStateOf(false) }
     var showMenuController by remember { mutableStateOf(false) }
@@ -181,6 +231,17 @@ fun VideoPlayerController(
                             if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
                             onBackToHistory()
                             return@onPreviewKeyEvent true
+                        }
+
+                        // 跳过片头/片尾：没有打开菜单时，确认键直接跳转
+                        if (!showClickableControllers && !showSeekController) {
+                            val skipTarget = currentSkipTarget()
+                            if (skipTarget != null) {
+                                if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                                onGoTime(skipTarget)
+                                if (!videoPlayer.isPlaying) onPlay()
+                                return@onPreviewKeyEvent true
+                            }
                         }
 
                         if (showSeekController) {
