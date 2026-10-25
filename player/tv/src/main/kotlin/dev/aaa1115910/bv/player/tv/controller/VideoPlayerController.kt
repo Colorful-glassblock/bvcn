@@ -93,29 +93,37 @@ fun VideoPlayerController(
     val videoPlayerConfigData = LocalVideoPlayerConfigData.current
     val logger = KotlinLogging.logger {}
 
-    // 当前是否处于可跳过的片头/片尾区间，返回需要跳到的秒数
+    // 当前是否处于可跳过的片头/片尾区间，返回需要跳到的毫秒数
     val currentSkipTarget: () -> Long? = {
         val positionMs = videoPlayerSeekData.position
+
         // SponsorBlock 片段优先
         val sponsor = videoPlayerConfigData.sponsorSegments.firstOrNull {
             it.contains(positionMs) && !it.hasSkipped
         }
+
         if (sponsor != null) {
             sponsor.endMs
         } else {
             val skipInfo = videoPlayerConfigData.currentSkipInfo
-            if (skipInfo == null) {
-                null
-            } else {
-                val positionSec = (positionMs / 1000).toInt()
-                val durationSec = (videoPlayerSeekData.duration / 1000).toInt()
-                when {
-                    positionSec in skipInfo.opStart until skipInfo.opEnd -> skipInfo.opEnd * 1000L
-                    skipInfo.edStart > 0 &&
-                        positionSec >= skipInfo.edStart &&
-                        positionSec < (if (skipInfo.edEnd > skipInfo.edStart) skipInfo.edEnd else durationSec) ->
-                        (if (skipInfo.edEnd > skipInfo.edStart) skipInfo.edEnd else durationSec) * 1000L
-                    else -> null
+            when {
+                skipInfo == null -> null
+                else -> {
+                    val positionSec = (positionMs / 1000).toInt()
+                    val durationSec = (videoPlayerSeekData.duration / 1000).toInt()
+                    val edEndSec = if (skipInfo.edEnd > skipInfo.edStart) skipInfo.edEnd else durationSec
+
+                    when {
+                        positionSec in skipInfo.opStart until skipInfo.opEnd ->
+                            skipInfo.opEnd * 1000L
+
+                        skipInfo.edStart > 0 &&
+                            positionSec >= skipInfo.edStart &&
+                            positionSec < edEndSec ->
+                            edEndSec * 1000L
+
+                        else -> null
+                    }
                 }
             }
         }
