@@ -1,6 +1,8 @@
 package dev.aaa1115910.bv.player.tv.controller
 
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import dev.aaa1115910.biliapi.entity.reply.Comment

@@ -138,6 +138,8 @@ fun CommentMenuList(
             items(items = panelState.comments) { comment ->
                 ListItem(
                     modifier = Modifier.fillMaxWidth(),
+                    onClick = {},
+                    selected = false,
                     headlineContent = {
                         Text(
                             text = comment.member.name,
