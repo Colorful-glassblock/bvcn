@@ -17,6 +17,7 @@ import dev.aaa1115910.biliapi.entity.video.VideoPage
  * @param cover 封面
  * @param duration 时长
  * @param dimension 分辨率
+ * @param skip 跳过片头片尾时间，仅 PGC 提供
  */
 data class Episode(
     val id: Int,
@@ -29,8 +30,18 @@ data class Episode(
     val cover: String,
     val duration: Int,
     val dimension: Dimension?,
-    val pages: List<VideoPage>
+    val pages: List<VideoPage>,
+    val skip: SkipInfo? = null
 ) {
+    /**
+     * 跳过片头片尾时间（秒）
+     */
+    data class SkipInfo(
+        val opStart: Int,
+        val opEnd: Int,
+        val edStart: Int,
+        val edEnd: Int
+    )
     companion object {
         fun fromEpisode(episode: bilibili.app.view.v1.Episode) = Episode(
             id = episode.id.toInt(),
@@ -70,7 +81,15 @@ data class Episode(
             epid = episode.epId,
             duration = episode.duration,
             dimension = episode.dimension?.let { Dimension.fromDimension(it) },
-            pages = emptyList()
+            pages = emptyList(),
+            skip = episode.skip?.let { skip ->
+                SkipInfo(
+                    opStart = skip.op.start,
+                    opEnd = skip.op.end,
+                    edStart = skip.ed.start,
+                    edEnd = skip.ed.end
+                )
+            }
         )
     }
 }

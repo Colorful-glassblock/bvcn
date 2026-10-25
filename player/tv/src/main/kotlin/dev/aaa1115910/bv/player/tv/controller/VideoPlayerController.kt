@@ -34,6 +34,7 @@ import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.DanmakuType
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerDebugInfoData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerHistoryData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekData
@@ -89,7 +90,27 @@ fun VideoPlayerController(
     val videoPlayerHistoryData = LocalVideoPlayerHistoryData.current
     val videoPlayerStateData = LocalVideoPlayerStateData.current
     val videoPlayerDebugInfoData = LocalVideoPlayerDebugInfoData.current
+    val videoPlayerConfigData = LocalVideoPlayerConfigData.current
     val logger = KotlinLogging.logger {}
+
+    // 当前是否处于可跳过的片头/片尾区间，返回需要跳到的秒数
+    val currentSkipTarget: () -> Int? = {
+        val skipInfo = videoPlayerConfigData.currentSkipInfo
+        if (skipInfo == null) {
+            null
+        } else {
+            val positionSec = (videoPlayerSeekData.position / 1000).toInt()
+            val durationSec = (videoPlayerSeekData.duration / 1000).toInt()
+            when {
+                positionSec in skipInfo.opStart until skipInfo.opEnd -> skipInfo.opEnd
+                skipInfo.edStart > 0 &&
+                    positionSec >= skipInfo.edStart &&
+                    positionSec < (if (skipInfo.edEnd > skipInfo.edStart) skipInfo.edEnd else durationSec) ->
+                    if (skipInfo.edEnd > skipInfo.edStart) skipInfo.edEnd else durationSec
+                else -> null
+            }
+        }
+    }
 
     var showListController by remember { mutableStateOf(false) }
     var showMenuController by remember { mutableStateOf(false) }
@@ -181,6 +202,17 @@ fun VideoPlayerController(
                             if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
                             onBackToHistory()
                             return@onPreviewKeyEvent true
+                        }
+
+                        // 跳过片头/片尾：没有打开菜单时，确认键直接跳转
+                        if (!showClickableControllers && !showSeekController) {
+                            val skipTarget = currentSkipTarget()
+                            if (skipTarget != null) {
+                                if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                                onGoTime(skipTarget * 1000L)
+                                if (!videoPlayer.isPlaying) onPlay()
+                                return@onPreviewKeyEvent true
+                            }
                         }
 
                         if (showSeekController) {

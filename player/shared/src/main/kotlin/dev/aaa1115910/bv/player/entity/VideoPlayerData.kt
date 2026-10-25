@@ -89,6 +89,18 @@ data class VideoPlayerConfigData(
     val currentSubtitleBottomPadding: Dp = 12.dp,
     val currentPlayMode: PlayMode = PlayMode.Sequential,
     val incognitoMode: Boolean = false,
+    /** 片头开始/结束、片尾开始/结束时间（秒），为 null 表示该视频不提供跳过信息 */
+    val currentSkipInfo: SkipInfo? = null,
+)
+
+/**
+ * 片头片尾跳过区间，单位秒
+ */
+data class SkipInfo(
+    val opStart: Int,
+    val opEnd: Int,
+    val edStart: Int,
+    val edEnd: Int
 )
 
 data class VideoPlayerDanmakuMasksData(

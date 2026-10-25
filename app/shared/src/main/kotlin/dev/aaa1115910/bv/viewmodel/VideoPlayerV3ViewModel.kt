@@ -24,6 +24,7 @@ import dev.aaa1115910.biliapi.entity.video.SubtitleAiStatus
 import dev.aaa1115910.biliapi.entity.video.SubtitleAiType
 import dev.aaa1115910.biliapi.entity.video.SubtitleType
 import dev.aaa1115910.biliapi.entity.video.VideoShot
+import dev.aaa1115910.biliapi.entity.video.season.Episode
 import dev.aaa1115910.biliapi.http.BiliHttpApi
 import dev.aaa1115910.biliapi.repositories.VideoPlayRepository
 import dev.aaa1115910.bilisubtitle.SubtitleParser
@@ -35,6 +36,7 @@ import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.DanmakuType
 import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.RequestState
+import dev.aaa1115910.bv.player.entity.SkipInfo
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoAspectRatio
 import dev.aaa1115910.bv.player.entity.VideoCodec
@@ -110,6 +112,8 @@ class VideoPlayerV3ViewModel(
     var title by mutableStateOf("")
     var partTitle by mutableStateOf("")
     var lastPlayed by mutableIntStateOf(0)
+    /** 当前分集的片头/片尾时间，仅 PGC 有值 */
+    var currentSkipInfo by mutableStateOf<SkipInfo?>(null)
     var fromSeason by mutableStateOf(false)
     var subType by mutableIntStateOf(0)
     var epid by mutableIntStateOf(0)
@@ -179,6 +183,7 @@ class VideoPlayerV3ViewModel(
             }
 
             updateSubtitle()
+            loadEpisodeSkipInfo(epid ?: 0)
             loadPlayUrl(avid, cid, epid ?: 0, preferApi = Prefs.apiType, proxyArea = proxyArea)
             addLogs("加载弹幕中")
             loadDanmaku(cid)
@@ -190,6 +195,40 @@ class VideoPlayerV3ViewModel(
             if (continuePlayNext) {
                 if (lastPlayEnabledSubtitle) enableFirstSubtitle()
             }
+        }
+    }
+
+    /**
+     * 拉取当前分集的片头/片尾时间。仅 PGC 提供，普通投稿没有该信息，
+     * 失败时保持 null，不影响播放。
+     */
+    private suspend fun loadEpisodeSkipInfo(epid: Int) {
+        if (epid == 0) {
+            withContext(Dispatchers.Main) { currentSkipInfo = null }
+            return
+        }
+        runCatching {
+            // 只取分集列表，不走完整的 PGC 详情（那边还会额外请求 playerIcon）
+            val seasonData = BiliHttpApi.getWebSeasonInfo(
+                epId = epid,
+                sessData = Prefs.sessData
+            ).getResponseData()
+            val episode = seasonData.episodes.firstOrNull { it.epId == epid || it.id == epid }
+            val skip = episode?.skip
+            withContext(Dispatchers.Main) {
+                currentSkipInfo = skip?.let {
+                    SkipInfo(
+                        opStart = it.op.start,
+                        opEnd = it.op.end,
+                        edStart = it.ed.start,
+                        edEnd = it.ed.end
+                    )
+                }
+            }
+            logger.fInfo { "Load skip info for epid $epid: op=${skip?.op}, ed=${skip?.ed}" }
+        }.onFailure {
+            logger.fInfo { "Load skip info failed: ${it.localizedMessage}" }
+            withContext(Dispatchers.Main) { currentSkipInfo = null }
         }
     }
 
