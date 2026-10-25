@@ -376,10 +376,13 @@ data class DynamicItem(
             fun fromModuleDynamic(moduleDynamic: dev.aaa1115910.biliapi.http.entity.dynamic.DynamicItem.Modules.Dynamic) =
                 DynamicDrawModule(
                     title = null,
-                    text = moduleDynamic.desc!!.text,
-                    images = moduleDynamic.major!!.draw!!.items
-                        .map(Picture::fromPicture)
-                        .distinctBy { it.url }
+                    text = moduleDynamic.desc?.text
+                        ?: moduleDynamic.major?.opus?.summary?.text
+                        ?: "empty text",
+                    images = (moduleDynamic.major?.draw?.items?.map(Picture::fromPicture)
+                        ?: moduleDynamic.major?.opus?.pics?.map(Picture::fromPicture))
+                        ?.distinctBy { it.url }
+                        ?: emptyList()
                 )
 
             fun fromModuleOpusSummaryAndModuleDynamic(
@@ -466,7 +469,7 @@ data class DynamicItem(
         companion object {
             fun fromModuleDynamic(moduleDynamic: dev.aaa1115910.biliapi.http.entity.dynamic.DynamicItem.Modules.Dynamic) =
                 DynamicWordModule(
-                    text = moduleDynamic.desc!!.text
+                    text = moduleDynamic.desc?.text ?: "empty text"
                 )
 
             fun fromModuleOpusSummary(moduleOpusSummary: bilibili.app.dynamic.v2.ModuleOpusSummary) =
