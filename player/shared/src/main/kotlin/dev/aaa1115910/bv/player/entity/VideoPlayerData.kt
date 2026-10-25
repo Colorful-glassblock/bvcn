@@ -121,16 +121,6 @@ data class SponsorSegmentInfo(
     fun contains(positionMs: Long): Boolean = positionMs in startMs until endMs
 }
 
-/**
- * 片头片尾跳过区间，单位秒
- */
-data class SkipInfo(
-    val opStart: Int,
-    val opEnd: Int,
-    val edStart: Int,
-    val edEnd: Int
-)
-
 data class VideoPlayerDanmakuMasksData(
     val danmakuMasks: List<DanmakuMaskSegment> = emptyList(),
 )
