@@ -66,15 +66,28 @@ class MaterialShapeRenderer {
         }
     }
 
+    // 绘制时复用的临时对象，避免每个 shape 每帧都分配
+    private val tmpRect = Rect()
+    private val tmpRectF = RectF()
+
     private fun draw(canvas: Canvas, rectF: RectF, paint: Paint) {
         canvas.withRotation(initialRotation * 90.0f, rectF.centerX(), rectF.centerY()) {
             val vectorDrawable = srcImgSvg
-            val rect = Rect()
-            rectF.round(rect)
-            vectorDrawable.bounds = rect
+            rectF.round(tmpRect)
+            vectorDrawable.bounds = tmpRect
             vectorDrawable.colorFilter = paint.colorFilter
             vectorDrawable.draw(this)
         }
+    }
+
+    /** 用 destRect 的中心和给定的缩放系数生成临时矩形，复用 tmpRectF */
+    private fun scaledRectF(scale: Float): RectF {
+        val halfW = destRect.width() / 2.0f * scale
+        val halfH = destRect.height() / 2.0f * scale
+        val cx = destRect.centerX()
+        val cy = destRect.centerY()
+        tmpRectF.set(cx - halfW, cy - halfH, cx + halfW, cy + halfH)
+        return tmpRectF
     }
 
     private fun drawForNone(canvas: Canvas, j: Long) {
@@ -90,16 +103,7 @@ class MaterialShapeRenderer {
         }
         if (f2 <= f) {
             val cos = (cos(((f2 - 1000.0f) / 1000.0f) * 3.1415927f) + 1.0f) / 2.0f
-            draw(
-                canvas,
-                RectF(
-                    destRect.centerX() - ((destRect.width() / 2.0f) * cos),
-                    destRect.centerY() - ((destRect.height() / 2.0f) * cos),
-                    destRect.centerX() + ((destRect.width() / 2.0f) * cos),
-                    destRect.centerY() + ((destRect.height() / 2.0f) * cos)
-                ),
-                paint
-            )
+            draw(canvas, scaledRectF(cos), paint)
         } else {
             drawForNone(canvas, j)
         }
@@ -111,15 +115,7 @@ class MaterialShapeRenderer {
         val f2 = j.toFloat()
         if (f2 <= f) {
             val interpolation = EmphasizedInterpolator.getInterpolation(f2 / f)
-            draw(
-                canvas,
-                RectF(
-                    destRect.centerX() - ((destRect.width() / 2.0f) * interpolation),
-                    destRect.centerY() - ((destRect.height() / 2.0f) * interpolation),
-                    destRect.centerX() + ((destRect.width() / 2.0f) * interpolation),
-                    destRect.centerY() + ((destRect.height() / 2.0f) * interpolation)
-                ), paint
-            )
+            draw(canvas, scaledRectF(interpolation), paint)
         } else {
             drawForNone(canvas, j)
         }
@@ -128,15 +124,7 @@ class MaterialShapeRenderer {
     private fun drawForSpringZoomIn(canvas: Canvas, j: Long) {
         if (j <= 1500) {
             val springScale = calculateSpringScale(j)
-            draw(
-                canvas,
-                RectF(
-                    destRect.centerX() - ((destRect.width() / 2.0f) * springScale),
-                    destRect.centerY() - ((destRect.height() / 2.0f) * springScale),
-                    destRect.centerX() + ((destRect.width() / 2.0f) * springScale),
-                    destRect.centerY() + ((destRect.height() / 2.0f) * springScale)
-                ), paint
-            )
+            draw(canvas, scaledRectF(springScale), paint)
         } else {
             drawForNone(canvas, j)
         }
@@ -150,18 +138,12 @@ class MaterialShapeRenderer {
             var f3 = ((f2 - f) * 360.0f) / 4410.0f
             if (f2 <= f) {
                 val interpolation = EmphasizedInterpolator.getInterpolation(f2 / f)
-                val rectF = RectF(
-                    destRect.centerX() - ((destRect.width() / 2.0f) * interpolation),
-                    destRect.centerY() - ((destRect.height() / 2.0f) * interpolation),
-                    destRect.centerX() + ((destRect.width() / 2.0f) * interpolation),
-                    destRect.centerY() + ((destRect.height() / 2.0f) * interpolation)
-                )
                 rotate(
                     (interpolation * 180.0f) + f3,
                     destRect.centerX(),
                     destRect.centerY()
                 )
-                draw(this, rectF, paint)
+                draw(this, scaledRectF(interpolation), paint)
             } else {
                 if (isMotionPaused) {
                     f3 = 0.0f
