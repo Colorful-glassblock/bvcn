@@ -55,6 +55,8 @@ fun SettingsDetails(
         val contentModifier = Modifier.padding(top = innerPadding.calculateTopPadding())
         when (selectedSettings) {
             null, MobileSettings.Play -> PlayContent(modifier = contentModifier)
+            MobileSettings.Other -> OtherContent(modifier = contentModifier)
+            MobileSettings.Network -> NetworkContent(modifier = contentModifier)
             MobileSettings.About -> AboutContent(modifier = contentModifier)
             MobileSettings.Debug -> DebugContent(modifier = contentModifier)
             MobileSettings.Advance -> AdvanceContent(modifier = contentModifier)
