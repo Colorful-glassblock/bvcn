@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import dev.aaa1115910.bv.player.seekbar.SeekBarSegment
 import dev.aaa1115910.bv.player.seekbar.SeekBarThumb
 import dev.aaa1115910.bv.player.seekbar.SeekMoveState
 import dev.aaa1115910.bv.player.seekbar.WavySeekBar
@@ -56,6 +57,7 @@ fun VideoSeekBar(
     bufferedPercentage: Int,
     playing: Boolean,
     colors: SliderColors = SliderDefaults.colors(),
+    segments: List<SeekBarSegment> = emptyList(),
     thumb: (@Composable (Modifier, SeekMoveState?) -> Unit)? = null,
     onPositionChange: ((position: Long, pressing: Boolean) -> Unit)? = null
 ) {
@@ -123,7 +125,8 @@ fun VideoSeekBar(
             bufferedPercentage = bufferedPercentage,
             waving = playing,
             showThumb = thumb == null,
-            colors = colors
+            colors = colors,
+            segments = segments
         )
         Box(modifier = Modifier.fillMaxWidth()) {
             val thumbModifier = Modifier

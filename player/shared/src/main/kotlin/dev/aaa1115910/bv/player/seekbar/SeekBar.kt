@@ -44,6 +44,7 @@ fun WavySeekBar(
     waving: Boolean = true,
     showThumb: Boolean = true,
     colors: SliderColors = SliderDefaults.colors(),
+    segments: List<SeekBarSegment> = emptyList(),
 ) {
     val trackWidth = 10f
 
@@ -161,6 +162,26 @@ fun WavySeekBar(
                 )
                 prevX = x.toFloat()
                 prevY = y
+            }
+
+            // SponsorBlock 等片段标记
+            if (segments.isNotEmpty() && duration > 0) {
+                val markerWidth = trackWidth * 0.45f
+                segments.forEach { segment ->
+                    val left = (size.width * (segment.startMs.toFloat() / duration))
+                        .coerceIn(0f, size.width)
+                    val right = (size.width * (segment.endMs.toFloat() / duration))
+                        .coerceIn(0f, size.width)
+                    if (right > left) {
+                        drawLine(
+                            color = Color(segment.color),
+                            start = Offset(left, center.y - trackWidth / 2f),
+                            end = Offset(right, center.y - trackWidth / 2f),
+                            strokeWidth = markerWidth,
+                            cap = StrokeCap.Round
+                        )
+                    }
+                }
             }
 
             // thumb indicator

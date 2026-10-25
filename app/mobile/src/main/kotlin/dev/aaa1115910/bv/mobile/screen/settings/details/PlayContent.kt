@@ -60,6 +60,14 @@ fun PlayContent(
                     prefReq = PrefKeys.prefEnableSoftwareVideoRendererRequest,
                     onCheckedChange = { true }
                 )
+            },
+            "赞助片段" to {
+                switchPreference(
+                    title = "启用赞助片段拦截",
+                    summary = "通过 BilibiliSponsorBlock 社区数据标记并跳过赞助片段",
+                    prefReq = PrefKeys.prefEnableSponsorBlockRequest,
+                    onCheckedChange = { true }
+                )
             }
         )
     }

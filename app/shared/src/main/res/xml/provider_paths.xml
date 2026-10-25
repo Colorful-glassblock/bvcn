@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="cache" path="."/>
+    <!-- 崩溃日志写在 filesDir/crash_logs，分享时需要可读 Uri -->
+    <files-path name="files" path="."/>
 </paths>

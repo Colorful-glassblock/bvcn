@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.max
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.DanmakuType
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
+import dev.aaa1115910.bv.player.entity.SponsorSegmentSkipType
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerStateData
 import dev.aaa1115910.bv.player.entity.PlayMode
@@ -415,6 +416,56 @@ fun BvPlayerControllerVideoContent(
         if (is2xPlaying) showBaseUi = false
     }
 
+    // 当前可跳过的片段：SponsorBlock 优先，其次 PGC 片头片尾
+    val skipTarget: Long? = run {
+        val positionMs = videoPlayerSeekData.position
+        val sponsor = videoPlayerConfigData.sponsorSegments.firstOrNull {
+            it.contains(positionMs) &&
+                it.skipType != SponsorSegmentSkipType.ShowOnly &&
+                it.skipType != SponsorSegmentSkipType.Disabled
+        }
+        if (sponsor != null) {
+            sponsor.endMs
+        } else {
+            val info = videoPlayerConfigData.currentSkipInfo
+            if (info == null) {
+                null
+            } else {
+                val posSec = (positionMs / 1000).toInt()
+                val durSec = (videoPlayerSeekData.duration / 1000).toInt()
+                val edEnd = if (info.edEnd > info.edStart) info.edEnd else durSec
+                when {
+                    posSec in info.opStart until info.opEnd -> info.opEnd * 1000L
+                    info.edStart > 0 && posSec >= info.edStart && posSec < edEnd -> edEnd * 1000L
+                    else -> null
+                }
+            }
+        }
+    }
+
+    val skipLabel: String = run {
+        val positionMs = videoPlayerSeekData.position
+        val sponsor = videoPlayerConfigData.sponsorSegments.firstOrNull {
+            it.contains(positionMs) &&
+                it.skipType != SponsorSegmentSkipType.ShowOnly &&
+                it.skipType != SponsorSegmentSkipType.Disabled
+        }
+        when {
+            sponsor != null -> "跳过${sponsor.shortName}"
+            videoPlayerConfigData.currentSkipInfo != null -> "跳过片头/片尾"
+            else -> ""
+        }
+    }
+
+    // 总是跳过的片段自动跳过
+    LaunchedEffect(videoPlayerSeekData.position, videoPlayerConfigData.sponsorSegments.size) {
+        val positionMs = videoPlayerSeekData.position
+        val segment = videoPlayerConfigData.sponsorSegments.firstOrNull {
+            it.autoSkip && it.contains(positionMs)
+        } ?: return@LaunchedEffect
+        onSeekToPosition(segment.endMs)
+    }
+
     Box(
         modifier = modifier
             .background(Color.Black)
@@ -424,6 +475,12 @@ fun BvPlayerControllerVideoContent(
         if (videoPlayerStateData.isBuffering && !videoPlayerStateData.isError) {
             BufferingTip(modifier = Modifier.align(Alignment.Center))
         }
+
+        SkipSegmentTip(
+            show = skipTarget != null,
+            text = skipLabel,
+            onClick = { skipTarget?.let { onSeekToPosition(it) } }
+        )
 
         SeekMoveTip(
             show = isMovingSeek,
