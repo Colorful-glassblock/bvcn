@@ -275,6 +275,8 @@ fun VideoPlayerScreen(
                             currentSubtitleBackgroundOpacity = playerViewModel.currentSubtitleBackgroundOpacity,
                             currentSubtitleBottomPadding = playerViewModel.currentSubtitleBottomPadding,
                             incognitoMode = Prefs.incognitoMode,
+            currentSkipInfo = playerViewModel.currentSkipInfo,
+            sponsorSegments = playerViewModel.sponsorSegments,
                         ),
                         LocalVideoPlayerDanmakuMasksData provides VideoPlayerDanmakuMasksData(
                             danmakuMasks = playerViewModel.danmakuMasks,

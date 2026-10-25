@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
+import dev.aaa1115910.bv.player.seekbar.SeekBarSegment
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerStateData
 import dev.aaa1115910.bv.player.entity.Resolution
@@ -184,6 +185,13 @@ private fun BottomControllers(
                     duration = totalTime,
                     position = currentTime,
                     bufferedPercentage = bufferedSeekPosition,
+                    segments = LocalVideoPlayerConfigData.current.sponsorSegments
+                        .filter {
+                            it.skipType != dev.aaa1115910.bv.player.entity.SponsorSegmentSkipType.Disabled
+                        }
+                        .map {
+                            SeekBarSegment(startMs = it.startMs, endMs = it.endMs, color = it.color)
+                        },
                     onPositionChange = { newPosition, isPressing ->
                         if (!isPressing) onSeekToPosition(newPosition)
                     }

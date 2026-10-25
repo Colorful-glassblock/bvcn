@@ -41,6 +41,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import dev.aaa1115910.bv.player.seekbar.SeekBar
+import dev.aaa1115910.bv.player.seekbar.SeekBarSegment
 import dev.aaa1115910.bv.player.seekbar.SeekBarThumb
 import dev.aaa1115910.bv.player.seekbar.SeekMoveState
 import dev.aaa1115910.bv.util.formatHourMinSec
@@ -54,6 +55,7 @@ fun VideoSeekBar(
     position: Long,
     bufferedPercentage: Int,
     colors: SliderColors = SliderDefaults.colors(),
+    segments: List<SeekBarSegment> = emptyList(),
     thumb: (@Composable (Modifier, SeekMoveState?) -> Unit)? = null,
     onPositionChange: ((position: Long, pressing: Boolean) -> Unit)? = null
 ) {
@@ -119,7 +121,8 @@ fun VideoSeekBar(
             duration = duration,
             position = if (pressing) previewPosition else position,
             bufferedPercentage = bufferedPercentage,
-            colors = colors
+            colors = colors,
+            segments = segments
         )
         Box(modifier = Modifier.fillMaxWidth()) {
             val thumbModifier = Modifier

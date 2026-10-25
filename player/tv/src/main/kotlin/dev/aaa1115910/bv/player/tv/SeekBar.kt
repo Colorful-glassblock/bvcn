@@ -17,6 +17,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import androidx.tv.material3.darkColorScheme
 import dev.aaa1115910.bv.player.seekbar.SeekBar
+import dev.aaa1115910.bv.player.seekbar.SeekBarSegment
 import dev.aaa1115910.bv.player.seekbar.SeekBarThumb
 import dev.aaa1115910.bv.player.seekbar.SeekMoveState
 import dev.aaa1115910.bv.util.formatHourMinSec
@@ -31,7 +32,9 @@ fun VideoSeekBar(
     idleIcon: String = "",
     movingIcon: String = "",
     moveState: SeekMoveState = SeekMoveState.Idle,
-    showPosition: Boolean = false
+    playing: Boolean = true,
+    showPosition: Boolean = false,
+    segments: List<SeekBarSegment> = emptyList(),
 ) {
     VideoSeekBar(
         modifier = modifier,
@@ -39,6 +42,7 @@ fun VideoSeekBar(
         position = position,
         bufferedPercentage = bufferedPercentage,
         showPosition = showPosition,
+        segments = segments,
         thumb = { thumbModifier ->
             SeekBarThumb(
                 modifier = thumbModifier,
@@ -58,6 +62,7 @@ private fun VideoSeekBar(
     bufferedPercentage: Int,
     colors: SliderColors = SliderDefaults.colors(),
     showPosition: Boolean = false,
+    segments: List<SeekBarSegment> = emptyList(),
     thumb: (@Composable (Modifier) -> Unit)? = null
 ) {
     BoxWithConstraints(
@@ -81,7 +86,8 @@ private fun VideoSeekBar(
                 duration = duration,
                 position = position,
                 bufferedPercentage = bufferedPercentage,
-                colors = colors
+                colors = colors,
+                segments = segments
             )
             thumb?.invoke(
                 Modifier

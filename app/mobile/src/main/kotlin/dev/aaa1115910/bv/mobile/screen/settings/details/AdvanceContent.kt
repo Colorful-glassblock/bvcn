@@ -17,7 +17,6 @@ import dev.aaa1115910.bv.util.PrefKeys
 fun AdvanceContent(
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     val dataStoreManager = DataStoreManager(LocalContext.current.dataStore)
     val prefs by dataStoreManager.preferenceFlow.collectAsState(initial = null)
 

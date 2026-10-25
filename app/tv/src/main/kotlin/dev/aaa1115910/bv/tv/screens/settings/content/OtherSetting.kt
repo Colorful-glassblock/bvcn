@@ -39,6 +39,21 @@ fun OtherSetting(
     var updateAlpha by remember { mutableStateOf(Prefs.updateAlpha) }
     var enableFfmpegAudioRenderer by remember { mutableStateOf(Prefs.enableFfmpegAudioRenderer) }
     var enableSoftwareVideoRenderer by remember { mutableStateOf(Prefs.enableSoftwareVideoRenderer) }
+    var enableSponsorBlock by remember { mutableStateOf(Prefs.enableSponsorBlock) }
+    var sponsorBlockSettings by remember { mutableStateOf(Prefs.sponsorBlockSettings) }
+    var showSponsorBlockSettings by remember { mutableStateOf(false) }
+
+    if (showSponsorBlockSettings) {
+        SponsorBlockSettingsDialog(
+            show = showSponsorBlockSettings,
+            settings = sponsorBlockSettings,
+            onDismiss = { showSponsorBlockSettings = false },
+            onSelect = { category, type ->
+                Prefs.setSponsorBlockSkipType(category, type)
+                sponsorBlockSettings = Prefs.sponsorBlockSettings
+            }
+        )
+    }
 
     Column(
         modifier = modifier.fillMaxSize(),
@@ -130,6 +145,24 @@ fun OtherSetting(
                         enableSoftwareVideoRenderer = it
                         Prefs.enableSoftwareVideoRenderer = it
                     }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = stringResource(R.string.settings_other_sponsor_block_title),
+                    supportText = stringResource(R.string.settings_other_sponsor_block_text),
+                    checked = enableSponsorBlock,
+                    onCheckedChange = {
+                        enableSponsorBlock = it
+                        Prefs.enableSponsorBlock = it
+                    }
+                )
+            }
+            item {
+                SettingListItem(
+                    title = stringResource(R.string.settings_other_sponsor_block_settings_title),
+                    supportText = stringResource(R.string.settings_other_sponsor_block_settings_text),
+                    onClick = { showSponsorBlockSettings = true }
                 )
             }
         }

@@ -44,6 +44,17 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
 
 - [Github Release](https://github.com/aaa1115910/bv/releases?q=prerelease%3Atrue)
 
+## 致谢
+
+- [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)：B 站接口收集，没有它非官方客户端几乎无法开发
+- [BilibiliSponsorBlock](https://github.com/hanydd/BilibiliSponsorBlock)：赞助片段标注的协议规范与分类定义，BVCN 的赞助片段功能基于其公开 API 文档独立实现
+- [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus)：在功能设计上提供了参考
+- [aaa1115910/bv](https://github.com/aaa1115910/bv)：BVCN 的上游项目（MIT）
+- 以及所有为本项目提交代码、反馈问题的贡献者
+
 ## License
 
 [MIT](LICENSE) © aaa1115910
+
+> BVCN 自身以 MIT 发布。上述致谢项目采用 GPL-3.0 等其它许可证，
+> BVCN 不包含它们的源代码，仅在实现功能时参考其公开的协议文档与交互设计。

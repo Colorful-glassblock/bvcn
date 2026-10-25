@@ -4,17 +4,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import de.schnettler.datastore.manager.DataStoreManager
 import dev.aaa1115910.bv.dataStore
 import dev.aaa1115910.bv.mobile.component.preferences.RadioPreferenceItem
 import dev.aaa1115910.bv.mobile.component.preferences.SwitchPreferenceItem
+import dev.aaa1115910.bv.mobile.component.preferences.TextPreferenceItem
 import dev.aaa1115910.bv.mobile.component.preferences.getOrDefault
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoCodec
 import dev.aaa1115910.bv.util.PrefKeys
+import dev.aaa1115910.bv.util.Prefs
 
 @Composable
 fun PlayContent(
@@ -23,6 +28,21 @@ fun PlayContent(
     val context = LocalContext.current
     val dataStoreManager = DataStoreManager(LocalContext.current.dataStore)
     val prefs by dataStoreManager.preferenceFlow.collectAsState(initial = null)
+
+    var sponsorBlockSettings by remember { mutableStateOf(Prefs.sponsorBlockSettings) }
+    var showSponsorBlockSettings by remember { mutableStateOf(false) }
+
+    if (showSponsorBlockSettings) {
+        SponsorBlockSettingsDialog(
+            show = showSponsorBlockSettings,
+            settings = sponsorBlockSettings,
+            onDismiss = { showSponsorBlockSettings = false },
+            onSelect = { category, type ->
+                Prefs.setSponsorBlockSkipType(category, type)
+                sponsorBlockSettings = Prefs.sponsorBlockSettings
+            }
+        )
+    }
 
     Column(
         modifier = modifier
@@ -53,6 +73,16 @@ fun PlayContent(
             title = "启用视频软解",
             summary = "使用软件解码器播放视频，可能解决硬解兼容性问题",
             prefReq = PrefKeys.prefEnableSoftwareVideoRendererRequest
+        )
+        SwitchPreferenceItem(
+            title = "启用赞助片段拦截",
+            summary = "通过 BilibiliSponsorBlock 社区数据标记并跳过赞助片段",
+            prefReq = PrefKeys.prefEnableSponsorBlockRequest
+        )
+        TextPreferenceItem(
+            title = "赞助片段分类设置",
+            summary = "为每个片段分类选择跳过方式",
+            onClick = { showSponsorBlockSettings = true }
         )
     }
 }
