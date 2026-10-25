@@ -7,10 +7,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.aaa1115910.bv.mobile.component.preferences.items.listItemPreference
 import dev.aaa1115910.bv.mobile.component.preferences.items.radioPreference
 import dev.aaa1115910.bv.mobile.component.preferences.items.switchPreference
 import dev.aaa1115910.bv.mobile.component.preferences.preferenceGroups
@@ -19,12 +24,27 @@ import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoCodec
 import dev.aaa1115910.bv.util.PrefKeys
+import dev.aaa1115910.bv.util.Prefs
 
 @Composable
 fun PlayContent(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var sponsorBlockSettings by remember { mutableStateOf(Prefs.sponsorBlockSettings) }
+    var showSponsorBlockSettings by remember { mutableStateOf(false) }
+
+    if (showSponsorBlockSettings) {
+        SponsorBlockSettingsDialog(
+            show = showSponsorBlockSettings,
+            settings = sponsorBlockSettings,
+            onDismiss = { showSponsorBlockSettings = false },
+            onSelect = { category, type ->
+                Prefs.setSponsorBlockSkipType(category, type)
+                sponsorBlockSettings = Prefs.sponsorBlockSettings
+            }
+        )
+    }
 
     LazyColumn(
         modifier = modifier,
@@ -67,6 +87,11 @@ fun PlayContent(
                     summary = "通过 BilibiliSponsorBlock 社区数据标记并跳过赞助片段",
                     prefReq = PrefKeys.prefEnableSponsorBlockRequest,
                     onCheckedChange = { true }
+                )
+                listItemPreference(
+                    title = "分类设置",
+                    summary = "为每个片段分类选择跳过方式",
+                    onClick = { showSponsorBlockSettings = true }
                 )
             }
         )
