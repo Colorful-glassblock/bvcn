@@ -342,7 +342,7 @@ data class DynamicItem(
                     val badge: Archive.Badge,
                     val bvid: String,
                     val cover: String,
-                    val desc: String,
+                    val desc: String? = null,
                     @SerialName("disable_preview")
                     val disablePreview: Int,
                     @SerialName("duration_text")
