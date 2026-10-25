@@ -16,7 +16,9 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerHistoryData
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerStateData
 import dev.aaa1115910.bv.util.formatHourMinSec
 
@@ -34,7 +36,6 @@ fun BackToHistoryTip(
     )
 }
 
-// TODO 跳过片头
 @Composable
 fun SkipOpTip(
     modifier: Modifier = Modifier,
@@ -47,16 +48,16 @@ fun SkipOpTip(
     )
 }
 
-// TODO 跳过片尾
 @Composable
 fun SkipEdTip(
     modifier: Modifier = Modifier,
-    show: Boolean
+    show: Boolean,
+    secondsLeft: Int = 0
 ) {
     SkipTip(
         modifier = modifier,
         show = show,
-        text = "跳过片尾"
+        text = if (secondsLeft > 0) "${secondsLeft} 秒后跳过片尾" else "跳过片尾"
     )
 }
 
@@ -95,22 +96,67 @@ fun SkipTip(
     }
 }
 
+/**
+ * 播放器左下角的提示区域。
+ *
+ * 优先级：历史记录续播 > 跳过片头 > 跳过片尾。
+ * 片头/片尾时间来自 PGC 接口，普通投稿没有该数据时不会显示。
+ */
 @Composable
 fun SkipTips(
     modifier: Modifier = Modifier,
-    showSkipOp: Boolean = false,
-    showSkipEd: Boolean = false,
 ) {
     val videoPlayerHistoryData = LocalVideoPlayerHistoryData.current
     val videoPlayerStateData = LocalVideoPlayerStateData.current
+    val videoPlayerSeekData = LocalVideoPlayerSeekData.current
+    val configData = LocalVideoPlayerConfigData.current
+
+    val skipInfo = configData.currentSkipInfo
+    val positionSec = (videoPlayerSeekData.position / 1000).toInt()
+    val durationSec = (videoPlayerSeekData.duration / 1000).toInt()
+
+    // 只有在片头区间内才提示；片尾在 edStart 之后提示
+    val inOp = skipInfo != null && positionSec in skipInfo.opStart until skipInfo.opEnd
+    val inEd = skipInfo != null && edStartReached(positionSec, durationSec, skipInfo)
 
     Box(modifier = modifier.fillMaxSize()) {
-        BackToHistoryTip(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(bottom = 32.dp),
-            show = videoPlayerStateData.showBackToHistory,
-            time = videoPlayerHistoryData.lastPlayed.toLong().formatHourMinSec()
-        )
+        if (videoPlayerStateData.showBackToHistory) {
+            BackToHistoryTip(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(bottom = 32.dp),
+                show = true,
+                time = videoPlayerHistoryData.lastPlayed.toLong().formatHourMinSec()
+            )
+        } else if (inOp) {
+            SkipOpTip(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(bottom = 32.dp),
+                show = true
+            )
+        } else if (inEd) {
+            SkipEdTip(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(bottom = 32.dp),
+                show = true,
+                secondsLeft = (skipInfo!!.edStart - positionSec).coerceAtLeast(0)
+            )
+        }
     }
+}
+
+/**
+ * 判断当前是否已进入片尾可跳过区间。
+ * B 站返回的 edStart/edEnd 是相对正片的秒数，edEnd 可能为 0，此时以视频总时长为准。
+ */
+private fun edStartReached(
+    positionSec: Int,
+    durationSec: Int,
+    skipInfo: dev.aaa1115910.bv.player.entity.SkipInfo
+): Boolean {
+    if (skipInfo.edStart <= 0) return false
+    val end = if (skipInfo.edEnd > skipInfo.edStart) skipInfo.edEnd else durationSec
+    return durationSec > 0 && positionSec in skipInfo.edStart until end
 }
