@@ -13,6 +13,7 @@ import dev.aaa1115910.biliapi.entity.reply.CommentReplyPage
 import dev.aaa1115910.biliapi.entity.reply.CommentSort
 import dev.aaa1115910.biliapi.repositories.CommentRepository
 import dev.aaa1115910.bv.BVApp
+import dev.aaa1115910.bv.util.CommentAntifraud
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.fException
 import dev.aaa1115910.bv.util.fInfo
@@ -145,5 +146,68 @@ class CommentViewModel(
         hasMoreReplies = true
         replies.clear()
         loadMoreReplies()
+    }
+
+    /** 评论发送状态 */
+    var sendingComment by mutableStateOf(false)
+
+    /** 最近一次反诈检查结果，UI 弹窗消费后置空 */
+    var antifraudResult by mutableStateOf<CommentAntifraud.CheckResult?>(null)
+
+    /**
+     * 发表评论，可选在发送后做 shadow ban 检查。
+     *
+     * @param message 评论内容
+     * @param root 根评论 id，回复二级评论时填写
+     * @param parent 父评论 id，回复二级评论时填写
+     */
+    suspend fun sendComment(
+        message: String,
+        root: Long = 0,
+        parent: Long = 0
+    ): Boolean {
+        if (sendingComment) return false
+        if (message.isBlank()) return false
+        sendingComment = true
+        var success = false
+        runCatching {
+            val newRpid = commentRepository.postComment(
+                oid = commentId,
+                type = commentType,
+                message = message,
+                root = root,
+                parent = parent
+            )
+            logger.fInfo { "Comment posted, rpid=$newRpid" }
+            success = true
+
+            if (Prefs.enableCommentAntifraud && newRpid != 0L) {
+                // 刚发出的评论不会立刻出现在列表里，稍等一下再查
+                delay(3000)
+                val result = CommentAntifraud.check(
+                    commentRepository = commentRepository,
+                    oid = commentId,
+                    type = commentType,
+                    rpid = newRpid,
+                    root = root,
+                    message = message
+                )
+                withContext(Dispatchers.Main) { antifraudResult = result }
+            } else {
+                withContext(Dispatchers.Main) {
+                    "评论已发送".toast(BVApp.context)
+                }
+            }
+
+            // 刷新列表，让新评论尽快出现
+            if (root == 0L) refreshComments() else refreshReplies()
+        }.onFailure {
+            logger.fException(it) { "Send comment failed" }
+            withContext(Dispatchers.Main) {
+                "发送失败：${it.localizedMessage}".toast(BVApp.context)
+            }
+        }
+        sendingComment = false
+        return success
     }
 }

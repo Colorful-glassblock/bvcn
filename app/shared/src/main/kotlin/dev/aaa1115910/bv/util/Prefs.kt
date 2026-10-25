@@ -333,6 +333,15 @@ object Prefs {
         }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayModeKey, value.ordinal) }
 
+    /** 发评反诈：评论发出后检查是否只有自己可见 */
+    var enableCommentAntifraud: Boolean
+        get() = runBlocking {
+            dsm.getPreferenceFlow(PrefKeys.prefEnableCommentAntifraudRequest).first()
+        }
+        set(value) = runBlocking {
+            dsm.editPreference(PrefKeys.prefEnableCommentAntifraud, value)
+        }
+
     /** 是否启用 SponsorBlock 赞助片段拦截 */
     var enableSponsorBlock: Boolean
         get() = runBlocking {
@@ -421,6 +430,7 @@ object PrefKeys {
     val prefBlacklistUserKey = booleanPreferencesKey("blacklist_user")
     val prefThemeTypeKey = intPreferencesKey("theme_type")
     val prefPlayModeKey = intPreferencesKey("play_mode")
+    val prefEnableCommentAntifraud = booleanPreferencesKey("enable_comment_antifraud")
     val prefEnableSponsorBlock = booleanPreferencesKey("enable_sponsor_block")
     val prefSponsorBlockSettings = stringPreferencesKey("sponsor_block_settings")
     val prefSponsorBlockMinDuration = intPreferencesKey("sponsor_block_min_duration")
@@ -483,6 +493,7 @@ object PrefKeys {
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Sequential.ordinal)
+    val prefEnableCommentAntifraudRequest = PreferenceRequest(prefEnableCommentAntifraud, true)
     val prefEnableSponsorBlockRequest = PreferenceRequest(prefEnableSponsorBlock, false)
     val prefSponsorBlockSettingsRequest = PreferenceRequest(prefSponsorBlockSettings, "")
     val prefSponsorBlockMinDurationRequest = PreferenceRequest(prefSponsorBlockMinDuration, 2)

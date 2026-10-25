@@ -40,6 +40,7 @@ fun OtherSetting(
     var enableFfmpegAudioRenderer by remember { mutableStateOf(Prefs.enableFfmpegAudioRenderer) }
     var enableSoftwareVideoRenderer by remember { mutableStateOf(Prefs.enableSoftwareVideoRenderer) }
     var enableSponsorBlock by remember { mutableStateOf(Prefs.enableSponsorBlock) }
+    var enableCommentAntifraud by remember { mutableStateOf(Prefs.enableCommentAntifraud) }
     var sponsorBlockSettings by remember { mutableStateOf(Prefs.sponsorBlockSettings) }
     var showSponsorBlockSettings by remember { mutableStateOf(false) }
 
@@ -155,6 +156,17 @@ fun OtherSetting(
                     onCheckedChange = {
                         enableSponsorBlock = it
                         Prefs.enableSponsorBlock = it
+                    }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = stringResource(R.string.settings_other_comment_antifraud_title),
+                    supportText = stringResource(R.string.settings_other_comment_antifraud_text),
+                    checked = enableCommentAntifraud,
+                    onCheckedChange = {
+                        enableCommentAntifraud = it
+                        Prefs.enableCommentAntifraud = it
                     }
                 )
             }

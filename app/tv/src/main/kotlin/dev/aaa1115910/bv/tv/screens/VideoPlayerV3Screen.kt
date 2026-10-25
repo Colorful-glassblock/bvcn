@@ -3,6 +3,8 @@ package dev.aaa1115910.bv.tv.screens
 import android.app.Activity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -29,6 +31,9 @@ import dev.aaa1115910.bv.player.entity.VideoPlayerVideoShotData
 import dev.aaa1115910.bv.player.tv.BvPlayer
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.swapList
+import dev.aaa1115910.bv.component.comment.CommentAntifraudDialog
+import dev.aaa1115910.bv.player.tv.controller.CommentPanelState
+import dev.aaa1115910.bv.viewmodel.CommentViewModel
 import dev.aaa1115910.bv.viewmodel.VideoPlayerV3ViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
@@ -38,11 +43,25 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun VideoPlayerV3Screen(
     modifier: Modifier = Modifier,
-    playerViewModel: VideoPlayerV3ViewModel = koinViewModel()
+    playerViewModel: VideoPlayerV3ViewModel = koinViewModel(),
+    commentViewModel: CommentViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger { }
+    val commentPanelState = remember { CommentPanelState() }
+
+    // 评论区和视频共用同一套 oid/type
+    LaunchedEffect(playerViewModel.currentCid) {
+        commentPanelState.reset()
+        commentViewModel.commentId = playerViewModel.currentAidForComment
+        commentViewModel.commentType = 1
+    }
+
+    CommentAntifraudDialog(
+        result = commentViewModel.antifraudResult,
+        onDismiss = { commentViewModel.antifraudResult = null }
+    )
 
     CompositionLocalProvider(
         LocalVideoPlayerSeekThumbData provides VideoPlayerSeekThumbData(
@@ -197,7 +216,26 @@ fun VideoPlayerV3Screen(
                 Prefs.defaultPlayMode = playMode
                 playerViewModel.currentPlayMode = playMode
             },
-            onUpdateDanmakuForPosition = playerViewModel::updateDanmakuForPosition
+            onUpdateDanmakuForPosition = playerViewModel::updateDanmakuForPosition,
+            commentPanelState = commentPanelState,
+            onLoadComments = {
+                if (!commentPanelState.loaded) {
+                    commentPanelState.loaded = true
+                }
+                commentPanelState.loading = true
+                commentViewModel.loadMoreComment()
+                commentPanelState.comments.clear()
+                commentPanelState.comments.addAll(commentViewModel.comments)
+                commentPanelState.hasMore = commentViewModel.hasMoreComments
+                commentPanelState.loading = false
+            },
+            onSendComment = { message ->
+                scope.launch(Dispatchers.IO) {
+                    commentViewModel.sendComment(message)
+                    commentPanelState.comments.clear()
+                    commentPanelState.comments.addAll(commentViewModel.comments)
+                }
+            }
         )
     }
 }
