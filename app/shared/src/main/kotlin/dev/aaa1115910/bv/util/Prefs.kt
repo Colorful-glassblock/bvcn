@@ -13,6 +13,8 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import de.schnettler.datastore.manager.PreferenceRequest
 import dev.aaa1115910.biliapi.entity.ApiType
+import dev.aaa1115910.biliapi.entity.sponsorblock.SponsorBlockCategory
+import dev.aaa1115910.biliapi.entity.sponsorblock.SponsorSkipType
 import dev.aaa1115910.biliapi.http.util.generateBuvid
 import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.BuildConfig
@@ -340,17 +342,20 @@ object Prefs {
             dsm.editPreference(PrefKeys.prefEnableSponsorBlock, value)
         }
 
-    /** 需要拦截的分类，存逗号分隔的分类值 */
-    var sponsorBlockCategories: Set<String>
+    /** 每个 SponsorBlock 分类的处理方式，按 [SponsorBlockCategory] 顺序存 ordinal */
+    var sponsorBlockSettings: List<SponsorSkipType>
         get() = runBlocking {
-            val raw = dsm.getPreferenceFlow(PrefKeys.prefSponsorBlockCategoriesRequest).first()
-            if (raw.isBlank()) DEFAULT_SPONSOR_BLOCK_CATEGORIES
-            else raw.split(',').filter { it.isNotBlank() }.toSet()
+            val raw = dsm.getPreferenceFlow(PrefKeys.prefSponsorBlockSettingsRequest).first()
+            val ordinals = raw.split(',').mapNotNull { it.toIntOrNull() }
+            SponsorBlockCategory.entries.mapIndexed { index, category ->
+                ordinals.getOrNull(index)?.let { SponsorSkipType.fromOrdinal(it) }
+                    ?: category.defaultSkipType
+            }
         }
         set(value) = runBlocking {
             dsm.editPreference(
-                PrefKeys.prefSponsorBlockCategories,
-                value.joinToString(",")
+                PrefKeys.prefSponsorBlockSettings,
+                value.joinToString(",") { it.ordinal.toString() }
             )
         }
 
@@ -363,8 +368,12 @@ object Prefs {
             dsm.editPreference(PrefKeys.prefSponsorBlockMinDuration, value)
         }
 
-    /** 默认只拦赞助和片头片尾，其余分类噪音大 */
-    val DEFAULT_SPONSOR_BLOCK_CATEGORIES = setOf("sponsor", "intro", "outro")
+    /** 设置某个分类的处理方式 */
+    fun setSponsorBlockSkipType(category: SponsorBlockCategory, type: SponsorSkipType) {
+        val current = sponsorBlockSettings.toMutableList()
+        current[category.ordinal] = type
+        sponsorBlockSettings = current
+    }
 }
 
 object PrefKeys {
@@ -413,7 +422,7 @@ object PrefKeys {
     val prefThemeTypeKey = intPreferencesKey("theme_type")
     val prefPlayModeKey = intPreferencesKey("play_mode")
     val prefEnableSponsorBlock = booleanPreferencesKey("enable_sponsor_block")
-    val prefSponsorBlockCategories = stringPreferencesKey("sponsor_block_categories")
+    val prefSponsorBlockSettings = stringPreferencesKey("sponsor_block_settings")
     val prefSponsorBlockMinDuration = intPreferencesKey("sponsor_block_min_duration")
 
     val prefIsLoginRequest = PreferenceRequest(prefIsLoginKey, false)
@@ -475,6 +484,6 @@ object PrefKeys {
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Sequential.ordinal)
     val prefEnableSponsorBlockRequest = PreferenceRequest(prefEnableSponsorBlock, false)
-    val prefSponsorBlockCategoriesRequest = PreferenceRequest(prefSponsorBlockCategories, "")
+    val prefSponsorBlockSettingsRequest = PreferenceRequest(prefSponsorBlockSettings, "")
     val prefSponsorBlockMinDurationRequest = PreferenceRequest(prefSponsorBlockMinDuration, 2)
 }

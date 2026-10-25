@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.inset
@@ -188,6 +189,7 @@ fun SeekBar(
     position: Long,
     bufferedPercentage: Int,
     colors: SliderColors = SliderDefaults.colors(),
+    segments: List<SeekBarSegment> = emptyList(),
 ) {
     val trackWidth = 10f
     Canvas(
@@ -216,8 +218,38 @@ fun SeekBar(
             strokeWidth = trackWidth,
             cap = StrokeCap.Round
         )
+        // SponsorBlock 等片段标记，画在进度条上层短竖条
+        if (segments.isNotEmpty() && duration > 0) {
+            val markerWidth = trackWidth * 0.45f
+            segments.forEach { segment ->
+                val startX = size.width * (segment.startMs.toFloat() / duration)
+                val endX = size.width * (segment.endMs.toFloat() / duration)
+                val left = startX.coerceIn(0f, size.width)
+                val right = endX.coerceIn(0f, size.width)
+                if (right > left) {
+                    drawLine(
+                        color = Color(segment.color),
+                        start = Offset(left, center.y - trackWidth / 2f),
+                        end = Offset(right, center.y - trackWidth / 2f),
+                        strokeWidth = markerWidth,
+                        cap = StrokeCap.Round
+                    )
+                }
+            }
+        }
     }
 }
+
+/**
+ * 进度条上的片段标记
+ *
+ * @param color ARGB 颜色
+ */
+data class SeekBarSegment(
+    val startMs: Long,
+    val endMs: Long,
+    val color: Long
+)
 
 @Preview
 @Composable

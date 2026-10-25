@@ -223,6 +223,8 @@
     <string name="settings_other_software_video_renderer_text">使用软件解码器播放视频，可能解决硬解兼容性问题</string>
     <string name="settings_other_sponsor_block_title">启用赞助片段拦截</string>
     <string name="settings_other_sponsor_block_text">通过 BilibiliSponsorBlock 社区数据标记并跳过赞助/片头片尾片段</string>
+    <string name="settings_other_sponsor_block_settings_title">赞助片段分类设置</string>
+    <string name="settings_other_sponsor_block_settings_text">为每个分类选择总是跳过、跳过一次、手动跳过、仅显示或禁用</string>
     <string name="settings_other_firebase_text">这将帮助开发者更快地发现与解决大部分问题</string>
     <string name="settings_other_firebase_title">发送错误日志</string>
     <string name="settings_other_fps_text">在屏幕左上角显示 FPS，这需要重启 App</string>

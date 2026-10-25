@@ -121,7 +121,10 @@ fun SkipTips(
 
     // SponsorBlock 片段优先于 PGC 片头片尾提示，因为它更具体
     val activeSponsor = configData.sponsorSegments.firstOrNull {
-        it.contains(videoPlayerSeekData.position) && !it.hasSkipped
+        it.contains(videoPlayerSeekData.position) &&
+            it.skipType != dev.aaa1115910.bv.player.entity.SponsorSegmentSkipType.ShowOnly &&
+            it.skipType != dev.aaa1115910.bv.player.entity.SponsorSegmentSkipType.Disabled &&
+            !(it.skipType == dev.aaa1115910.bv.player.entity.SponsorSegmentSkipType.SkipOnce && it.hasSkipped)
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -139,7 +142,7 @@ fun SkipTips(
                     .align(Alignment.BottomStart)
                     .padding(bottom = 32.dp),
                 show = true,
-                text = "点击确认键跳过${activeSponsor.categoryName}"
+                text = "点击确认键跳过${activeSponsor.shortName}"
             )
         } else if (inOp) {
             SkipOpTip(
