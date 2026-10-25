@@ -36,7 +36,14 @@ class MaterialShapeRenderer {
     }
 
     constructor(srcImgSvg: Drawable, destRect: RectF, paint: Paint) {
-        this.srcImgSvg = srcImgSvg
+        // API 28 及以下同一个 Drawable 被多次 draw 会串 bounds/colorFilter，
+        // 这里建一份本 renderer 专属的副本，而不是每帧再 new 一次
+        this.srcImgSvg = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            runCatching { srcImgSvg.constantState!!.newDrawable().mutate() }
+                .getOrDefault(srcImgSvg)
+        } else {
+            srcImgSvg
+        }
         this.destRect = destRect
         this.paint = paint
         this.animationStyle = EntryAnimationStyle.None
@@ -61,10 +68,7 @@ class MaterialShapeRenderer {
 
     private fun draw(canvas: Canvas, rectF: RectF, paint: Paint) {
         canvas.withRotation(initialRotation * 90.0f, rectF.centerX(), rectF.centerY()) {
-            val vectorDrawable = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-                runCatching { srcImgSvg.constantState!!.newDrawable().mutate() }
-                    .getOrDefault(srcImgSvg)
-            } else srcImgSvg
+            val vectorDrawable = srcImgSvg
             val rect = Rect()
             rectF.round(rect)
             vectorDrawable.bounds = rect
