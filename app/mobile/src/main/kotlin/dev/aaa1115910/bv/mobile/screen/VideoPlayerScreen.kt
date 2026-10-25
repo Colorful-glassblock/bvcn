@@ -89,6 +89,7 @@ import dev.aaa1115910.bv.mobile.component.player.VideoPlayerPages
 import dev.aaa1115910.bv.mobile.component.reply.CommentItem
 import dev.aaa1115910.bv.component.comment.CommentAntifraudDialog
 import dev.aaa1115910.bv.mobile.component.reply.ReplySheetScaffold
+import dev.aaa1115910.bv.mobile.component.reply.SendCommentDialog
 import dev.aaa1115910.bv.mobile.component.videocard.RelatedVideoItem
 import dev.aaa1115910.bv.mobile.theme.BVMobileTheme
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
