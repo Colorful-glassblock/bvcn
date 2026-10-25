@@ -119,6 +119,11 @@ fun SkipTips(
     val inOp = skipInfo != null && positionSec in skipInfo.opStart until skipInfo.opEnd
     val inEd = skipInfo != null && edStartReached(positionSec, durationSec, skipInfo)
 
+    // SponsorBlock 片段优先于 PGC 片头片尾提示，因为它更具体
+    val activeSponsor = configData.sponsorSegments.firstOrNull {
+        it.contains(videoPlayerSeekData.position) && !it.hasSkipped
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         if (videoPlayerStateData.showBackToHistory) {
             BackToHistoryTip(
@@ -127,6 +132,14 @@ fun SkipTips(
                     .padding(bottom = 32.dp),
                 show = true,
                 time = videoPlayerHistoryData.lastPlayed.toLong().formatHourMinSec()
+            )
+        } else if (activeSponsor != null) {
+            SkipTip(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(bottom = 32.dp),
+                show = true,
+                text = "点击确认键跳过${activeSponsor.categoryName}"
             )
         } else if (inOp) {
             SkipOpTip(

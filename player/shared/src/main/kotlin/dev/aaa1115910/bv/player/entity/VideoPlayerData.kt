@@ -90,7 +90,36 @@ data class VideoPlayerConfigData(
     val incognitoMode: Boolean = false,
     /** 片头开始/结束、片尾开始/结束时间（秒），为 null 表示该视频不提供跳过信息 */
     val currentSkipInfo: SkipInfo? = null,
+    /** SponsorBlock 片段，按开始时间升序 */
+    val sponsorSegments: List<SponsorSegmentInfo> = emptyList(),
 )
+
+/**
+ * 片头片尾跳过区间，单位秒
+ */
+data class SkipInfo(
+    val opStart: Int,
+    val opEnd: Int,
+    val edStart: Int,
+    val edEnd: Int
+)
+
+/**
+ * SponsorBlock 片段，时间单位毫秒
+ *
+ * @param category 分类值，见 SponsorBlockCategory
+ * @param categoryName 分类显示名
+ */
+data class SponsorSegmentInfo(
+    val uuid: String,
+    val category: String,
+    val categoryName: String,
+    val startMs: Long,
+    val endMs: Long,
+    val hasSkipped: Boolean = false
+) {
+    fun contains(positionMs: Long): Boolean = positionMs in startMs until endMs
+}
 
 /**
  * 片头片尾跳过区间，单位秒

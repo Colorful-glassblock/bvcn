@@ -39,6 +39,7 @@ fun OtherSetting(
     var updateAlpha by remember { mutableStateOf(Prefs.updateAlpha) }
     var enableFfmpegAudioRenderer by remember { mutableStateOf(Prefs.enableFfmpegAudioRenderer) }
     var enableSoftwareVideoRenderer by remember { mutableStateOf(Prefs.enableSoftwareVideoRenderer) }
+    var enableSponsorBlock by remember { mutableStateOf(Prefs.enableSponsorBlock) }
 
     Column(
         modifier = modifier.fillMaxSize(),
@@ -129,6 +130,17 @@ fun OtherSetting(
                     onCheckedChange = {
                         enableSoftwareVideoRenderer = it
                         Prefs.enableSoftwareVideoRenderer = it
+                    }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = stringResource(R.string.settings_other_sponsor_block_title),
+                    supportText = stringResource(R.string.settings_other_sponsor_block_text),
+                    checked = enableSponsorBlock,
+                    onCheckedChange = {
+                        enableSponsorBlock = it
+                        Prefs.enableSponsorBlock = it
                     }
                 )
             }
