@@ -1,6 +1,5 @@
 package dev.aaa1115910.bv.mobile.screen.settings.details
 
-import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -9,12 +8,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.aaa1115910.biliapi.entity.ApiType
-import dev.aaa1115910.bv.mobile.activities.LogsActivity
-import dev.aaa1115910.bv.mobile.component.preferences.items.listItemPreference
 import dev.aaa1115910.bv.mobile.component.preferences.items.radioPreference
 import dev.aaa1115910.bv.mobile.component.preferences.preferenceGroups
 import dev.aaa1115910.bv.mobile.theme.BVMobileTheme
@@ -24,8 +20,6 @@ import dev.aaa1115910.bv.util.PrefKeys
 fun AdvanceContent(
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 18.dp)
@@ -37,15 +31,6 @@ fun AdvanceContent(
                     prefReq = PrefKeys.prefApiTypeRequest,
                     values = ApiType.entries.associate { it.ordinal to it.name }
                         .toSortedMap { a, b -> a.compareTo(b) }
-                )
-            },
-            "调试" to {
-                listItemPreference(
-                    title = "查看日志",
-                    summary = "查看并分享崩溃日志与手动保存的日志",
-                    onClick = {
-                        context.startActivity(Intent(context, LogsActivity::class.java))
-                    }
                 )
             }
         )

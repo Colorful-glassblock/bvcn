@@ -1,20 +1,44 @@
 package dev.aaa1115910.bv.mobile.screen.settings.details
 
+import android.content.Intent
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.aaa1115910.bv.mobile.activities.LogsActivity
+import dev.aaa1115910.bv.mobile.component.preferences.items.listItemPreference
+import dev.aaa1115910.bv.mobile.component.preferences.preferenceGroups
 import dev.aaa1115910.bv.mobile.theme.BVMobileTheme
 
 @Composable
 fun DebugContent(
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
 
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 18.dp)
+    ) {
+        preferenceGroups(
+            null to {
+                listItemPreference(
+                    title = "查看日志",
+                    summary = "查看并分享崩溃日志与手动保存的日志",
+                    onClick = {
+                        context.startActivity(Intent(context, LogsActivity::class.java))
+                    }
+                )
+            }
+        )
+    }
 }
 
 @Preview
