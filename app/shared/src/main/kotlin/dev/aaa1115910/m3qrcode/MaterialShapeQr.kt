@@ -73,7 +73,8 @@ fun MaterialShapeQr(
             withFrameMillis {
                 state.frameElapsed = System.currentTimeMillis() - state.qrStartTime
             }
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && state.hasFinalDataImage) {
+            // 入场动画在 3000ms 后已定格，之后继续每帧改状态只会一直触发重组和重绘
+            if (state.hasFinalDataImage) {
                 break
             }
         }

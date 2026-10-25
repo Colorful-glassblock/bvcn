@@ -21,7 +21,6 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.ColorUtils
@@ -61,7 +60,9 @@ internal data class MaterialShapeQrState(
     val finderPatternShapeList = mutableStateListOf<MaterialShapeRenderer>()
     val dataModuleShapeList = mutableStateListOf<MaterialShapeRenderer>()
     val backgroundModuleShapeList = mutableStateListOf<MaterialShapeRenderer>()
-    val hasCreated: SnapshotStateList<SnapshotStateList<Boolean>> = mutableStateListOf()
+    // 仅用于扫描时的占用标记，绘制阶段不再读取，不需要可观察状态
+    private var hasCreated: BooleanArray = BooleanArray(0)
+    private var hasCreatedLineCount = 0
 
     var finderPatternCenterShapeIndex by mutableIntStateOf(0)
 
@@ -188,9 +189,17 @@ internal data class MaterialShapeQrState(
     fun markAsCreated(x: Int, y: Int, width: Int, height: Int) {
         for (dx in 0 until width) {
             for (dy in 0 until height) {
-                hasCreated[x + dx][y + dy] = true
+                hasCreatedSet(x + dx, y + dy)
             }
         }
+    }
+
+    private fun hasCreatedGet(x: Int, y: Int): Boolean =
+        hasCreated.getOrElse(x * hasCreatedLineCount + y) { false }
+
+    private fun hasCreatedSet(x: Int, y: Int) {
+        val index = x * hasCreatedLineCount + y
+        if (index in hasCreated.indices) hasCreated[index] = true
     }
 
     fun isForeground(x: Int, y: Int): Boolean {
@@ -220,14 +229,8 @@ internal data class MaterialShapeQrState(
         // 计算最终位图尺寸
         qrcodeSize = moduleSize * qrcodeLineCount
 
-        hasCreated.clear()
-        for (i in 0 until qrcodeLineCount) {
-            val row = mutableStateListOf<Boolean>()
-            for (j in 0 until qrcodeLineCount) {
-                row.add(false)
-            }
-            hasCreated.add(row)
-        }
+        hasCreated = BooleanArray(qrcodeLineCount * qrcodeLineCount)
+        hasCreatedLineCount = qrcodeLineCount
 
         // 清空渲染器列表
         finderPatternShapeList.clear()
@@ -441,7 +444,7 @@ internal data class MaterialShapeQrState(
         if (endX > n || startY + 1 > n) return
         for (k in 0 until width) {
             val x = startX + k
-            if (hasCreated[x][startY] || !isForeground(x, startY)) return
+            if (hasCreatedGet(x, startY) || !isForeground(x, startY)) return
         }
         createHorizontalBar(startX, startY, width, list)
     }
@@ -458,7 +461,7 @@ internal data class MaterialShapeQrState(
 
         for (dy in 0 until height) {
             val y = startY + dy
-            if (!isForeground(startX, y) || hasCreated[startX][y]) return
+            if (!isForeground(startX, y) || hasCreatedGet(startX, y)) return
         }
 
         createSingleVerticalBar(startX, startY, height, list)
@@ -468,7 +471,7 @@ internal data class MaterialShapeQrState(
         for (y in 0 until qrcodeLineCount) {
             for (x in 0 until qrcodeLineCount) {
                 // 如果已经创建或是前景则跳过；否则为背景模块创建 1x1 方形渲染器
-                if (!hasCreated[x][y] && !isForeground(x, y)) {
+                if (!hasCreatedGet(x, y) && !isForeground(x, y)) {
                     createRendererForShape(
                         x, y, 1, 1, list, randomSquare(1)
                     ) { renderer ->
@@ -491,7 +494,7 @@ internal data class MaterialShapeQrState(
     fun searchAndCreateSmallForegroundSquareShapes(list: MutableList<MaterialShapeRenderer>) {
         for (y in 0 until qrcodeLineCount) {
             for (x in 0 until qrcodeLineCount) {
-                if (!hasCreated[x][y] && isForeground(x, y)) {
+                if (!hasCreatedGet(x, y) && isForeground(x, y)) {
                     createRendererForShape(
                         x, y, 1, 1, list, randomSquare(1)
                     ) { renderer ->
@@ -511,13 +514,13 @@ internal data class MaterialShapeQrState(
         val max = (qrcodeLineCount - len) + 1
         for (y in 0 until max) {
             for (x in 0 until max) {
-                if (!hasCreated[x][y] && isForeground(x, y)) {
+                if (!hasCreatedGet(x, y) && isForeground(x, y)) {
                     var ok = true
                     for (dy in 0 until len) {
                         for (dx in 0 until len) {
                             val nx = x + dx
                             val ny = y + dy
-                            if (hasCreated[nx][ny] || !isForeground(nx, ny)) {
+                            if (hasCreatedGet(nx, ny) || !isForeground(nx, ny)) {
                                 ok = false
                                 break
                             }
@@ -548,7 +551,7 @@ internal data class MaterialShapeQrState(
         val n = qrcodeLineCount
         for (y in 0 until n) {
             for (x in 0 until n) {
-                if (!hasCreated[x][y] && isForeground(x, y)) {
+                if (!hasCreatedGet(x, y) && isForeground(x, y)) {
                     val order = if (Random.Default.nextFloat() < 0.5f) funcs else reversed
                     for (f in order) f(x, y, len, list)
                 }
@@ -561,11 +564,11 @@ internal data class MaterialShapeQrState(
         for (y in 0 until qrcodeLineCount) {
             val maxX = (qrcodeLineCount - len) + 1
             for (x in 0 until maxX) {
-                if (!hasCreated[x][y] && isForeground(x, y)) {
+                if (!hasCreatedGet(x, y) && isForeground(x, y)) {
                     var ok = true
                     for (dx in 1 until len) {
                         val nx = x + dx
-                        if (hasCreated[nx][y] || !isForeground(nx, y)) {
+                        if (hasCreatedGet(nx, y) || !isForeground(nx, y)) {
                             ok = false
                             break
                         }
