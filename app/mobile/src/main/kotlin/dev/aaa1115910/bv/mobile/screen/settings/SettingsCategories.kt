@@ -70,6 +70,8 @@ fun SettingsCategories(
         ) {
             val settings = listOf(
                 MobileSettings.Play,
+                MobileSettings.Other,
+                MobileSettings.Network,
                 MobileSettings.Advance,
                 MobileSettings.About,
                 MobileSettings.Debug
