@@ -245,7 +245,7 @@ private fun UpdateDialogContent(
                 }
 
                 UpdateStatus.InstallError, UpdateStatus.DownloadError, UpdateStatus.CheckError -> {
-                    button(true, { checkUpdate(true) }) {
+                    button(true, checkUpdate) {
                         text("再试一次")
                     }
                 }
