@@ -71,25 +71,29 @@ fun UpdateDialog(
 
     var latestReleaseBuild by remember { mutableStateOf<Release?>(null) }
 
-    val checkUpdate: () -> Unit = {
+    val checkUpdate: (Boolean) -> Unit = { force ->
         updateStatus = UpdateStatus.UpdatingInfo
 
         scope.launch(Dispatchers.IO) {
             runCatching {
-                latestReleaseBuild = GithubApi.getLatestBuild()
-                val revision = latestReleaseBuild!!
-                    .assets.first { it.name.startsWith("BV") }
-                    .name.split("_")[1].toInt()
-                if (revision <= BuildConfig.VERSION_CODE) {
-                    updateStatus = UpdateStatus.NoAvailableUpdate
-                    return@launch
+                GithubApi.getLatestBuild(force = force)
+            }.onSuccess { release ->
+                latestReleaseBuild = release
+                logger.fInfo { "Find latest version ${release.name}" }
+
+                // 版本号从 APK 文件名里取，取不到就认为无法判断，直接给可下载状态
+                val revision = release.assets
+                    .firstOrNull { it.name.startsWith("BV") }
+                    ?.name?.split("_")?.getOrNull(1)?.toIntOrNull()
+
+                updateStatus = if (revision != null && revision <= BuildConfig.VERSION_CODE) {
+                    UpdateStatus.NoAvailableUpdate
+                } else {
+                    UpdateStatus.Ready
                 }
             }.onFailure {
                 logger.fException(it) { "Failed to get latest version" }
                 updateStatus = UpdateStatus.CheckError
-            }.onSuccess {
-                logger.fInfo { "Find latest version ${latestReleaseBuild!!.name}" }
-                updateStatus = UpdateStatus.Ready
             }
         }
     }
@@ -140,9 +144,10 @@ fun UpdateDialog(
         }
     }
 
+    // 打开时只查一次；重复打开复用缓存，避免把 GitHub 未认证配额打爆
     LaunchedEffect(show) {
         if (show) {
-            checkUpdate()
+            checkUpdate(false)
         } else {
             updateStatus = UpdateStatus.UpdatingInfo
         }
@@ -157,7 +162,7 @@ fun UpdateDialog(
             bytesSentTotal = downloadedBytes,
             contentLength = totalBytes,
             onHideDialog = onHideDialog,
-            checkUpdate = checkUpdate,
+            checkUpdate = { checkUpdate(true) },
             startUpdate = startUpdate,
             text = text,
             button = button,
