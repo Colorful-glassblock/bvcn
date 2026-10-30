@@ -76,7 +76,10 @@ fun MenuController(
     onSubtitleChange: (Subtitle) -> Unit,
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
-    onSubtitleBottomPadding: (Dp) -> Unit
+    onSubtitleBottomPadding: (Dp) -> Unit,
+    commentPanelState: CommentPanelState = CommentPanelState(),
+    onLoadComments: (suspend () -> Unit)? = null,
+    onSendComment: (String) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val defaultFocusRequester = remember { FocusRequester() }
@@ -135,7 +138,10 @@ fun MenuController(
     onSubtitleChange: (Subtitle) -> Unit,
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
-    onSubtitleBottomPadding: (Dp) -> Unit
+    onSubtitleBottomPadding: (Dp) -> Unit,
+    commentPanelState: CommentPanelState = CommentPanelState(),
+    onLoadComments: (suspend () -> Unit)? = null,
+    onSendComment: (String) -> Unit = {}
 ) {
     var selectedNavItem by remember { mutableStateOf(VideoPlayerMenuNavItem.Picture) }
     var focusState by remember { mutableStateOf(MenuFocusState.MenuNav) }
