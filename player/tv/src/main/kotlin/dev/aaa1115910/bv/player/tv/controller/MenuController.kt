@@ -52,6 +52,7 @@ import dev.aaa1115910.bv.player.entity.VideoCodec
 import dev.aaa1115910.bv.player.entity.VideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.VideoPlayerMenuNavItem
 import dev.aaa1115910.bv.player.tv.controller.playermenu.ClosedCaptionMenuList
+import dev.aaa1115910.bv.player.tv.controller.playermenu.CommentMenuList
 import dev.aaa1115910.bv.player.tv.controller.playermenu.DanmakuMenuList
 import dev.aaa1115910.bv.player.tv.controller.playermenu.MenuNavList
 import dev.aaa1115910.bv.player.tv.controller.playermenu.OthersMenuList
@@ -78,7 +79,10 @@ fun MenuController(
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
-    onPlayModeChange: (PlayMode) -> Unit
+    onPlayModeChange: (PlayMode) -> Unit,
+    commentPanelState: CommentPanelState = CommentPanelState(),
+    onLoadComments: (suspend () -> Unit)? = null,
+    onSendComment: (String) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val defaultFocusRequester = remember { FocusRequester() }
@@ -139,7 +143,10 @@ fun MenuController(
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
-    onPlayModeChange: (PlayMode) -> Unit
+    onPlayModeChange: (PlayMode) -> Unit,
+    commentPanelState: CommentPanelState = CommentPanelState(),
+    onLoadComments: (suspend () -> Unit)? = null,
+    onSendComment: (String) -> Unit = {}
 ) {
     var selectedNavItem by remember { mutableStateOf(VideoPlayerMenuNavItem.Picture) }
     var focusState by remember { mutableStateOf(MenuFocusState.MenuNav) }
@@ -220,6 +227,9 @@ private fun MenuList(
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
     onPlayModeChange: (PlayMode) -> Unit,
+    onSendComment: (String) -> Unit = {},
+    commentPanelState: CommentPanelState = CommentPanelState(),
+    onLoadComments: (suspend () -> Unit)? = null,
     onFocusStateChange: (MenuFocusState) -> Unit
 ) {
     Box(
@@ -256,6 +266,15 @@ private fun MenuList(
                     onSubtitleBackgroundOpacityChange = onSubtitleBackgroundOpacityChange,
                     onSubtitleBottomPadding = onSubtitleBottomPadding,
                     onFocusStateChange = onFocusStateChange
+                )
+            }
+
+            VideoPlayerMenuNavItem.Comment -> {
+                CommentMenuList(
+                    panelState = commentPanelState,
+                    onFocusStateChange = onFocusStateChange,
+                    onSendComment = onSendComment,
+                    onLoadComments = onLoadComments
                 )
             }
 

@@ -138,6 +138,9 @@ class VideoPlayerV3ViewModel(
     var playerIconMoving by mutableStateOf("")
 
     private var currentAid = 0L
+
+    /** 供评论区使用的 avid（评论 oid） */
+    val currentAidForComment: Long get() = currentAid
     var currentCid by mutableLongStateOf(0L)
     private var currentEpid = 0
 

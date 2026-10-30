@@ -93,6 +93,14 @@ fun PlayContent(
                     summary = "为每个片段分类选择跳过方式",
                     onClick = { showSponsorBlockSettings = true }
                 )
+            },
+            "评论" to {
+                switchPreference(
+                    title = "发评反诈",
+                    summary = "发送评论后检查评论是否只有自己可见（shadow ban）",
+                    prefReq = PrefKeys.prefEnableCommentAntifraudRequest,
+                    onCheckedChange = { true }
+                )
             }
         )
     }

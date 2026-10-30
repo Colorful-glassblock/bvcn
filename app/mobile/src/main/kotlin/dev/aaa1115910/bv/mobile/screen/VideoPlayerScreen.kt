@@ -87,7 +87,9 @@ import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.mobile.activities.VideoPlayerActivity
 import dev.aaa1115910.bv.mobile.component.player.VideoPlayerPages
 import dev.aaa1115910.bv.mobile.component.reply.CommentItem
+import dev.aaa1115910.bv.component.comment.CommentAntifraudDialog
 import dev.aaa1115910.bv.mobile.component.reply.ReplySheetScaffold
+import dev.aaa1115910.bv.mobile.component.reply.SendCommentDialog
 import dev.aaa1115910.bv.mobile.component.videocard.RelatedVideoItem
 import dev.aaa1115910.bv.mobile.theme.BVMobileTheme
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
@@ -406,6 +408,10 @@ fun VideoPlayerScreen(
                     initialPageOffsetFraction = 0f,
                     pageCount = { 2 }
                 )
+                CommentAntifraudDialog(
+                    result = commentVideModel.antifraudResult,
+                    onDismiss = { commentVideModel.antifraudResult = null }
+                )
                 if (windowSizeClass.widthSizeClass != WindowWidthSizeClass.Expanded) {
                     // 小屏幕下的视频详情推荐/评论
                     ReplySheetScaffold(
@@ -536,6 +542,11 @@ fun VideoPlayerScreen(
                                                 commentVideModel.rpid = rpId
                                                 commentVideModel.rpCount = repliesCount
                                                 scope.launch { replySheetState.bottomSheetState.expand() }
+                                            },
+                                            onSendComment = { message ->
+                                                scope.launch(Dispatchers.IO) {
+                                                    commentVideModel.sendComment(message)
+                                                }
                                             }
                                         )
                                     }
@@ -828,8 +839,20 @@ fun VideoComments(
     onRefreshComments: () -> Unit,
     onSwitchCommentSort: (CommentSort) -> Unit,
     onShowPreviewer: (newPictures: List<Picture>, afterSetPictures: () -> Unit) -> Unit,
-    onShowReplies: (rpId: Long, repliesCount: Int) -> Unit
+    onShowReplies: (rpId: Long, repliesCount: Int) -> Unit,
+    onSendComment: (String) -> Unit = {}
 ) {
+    var showSendDialog by remember { mutableStateOf(false) }
+
+    if (showSendDialog) {
+        SendCommentDialog(
+            onDismiss = { showSendDialog = false },
+            onSend = { message ->
+                onSendComment(message)
+                showSendDialog = false
+            }
+        )
+    }
     val listState = rememberLazyListState()
     val pullRefreshState = rememberPullRefreshState(refreshingComments, { onRefreshComments() })
 
@@ -870,22 +893,27 @@ fun VideoComments(
                         },
                         style = MaterialTheme.typography.titleMedium
                     )
-                    TextButton(onClick = {
-                        onSwitchCommentSort(
-                            when (commentSort) {
-                                CommentSort.Hot -> CommentSort.Time
-                                CommentSort.Time -> CommentSort.Hot
-                                else -> CommentSort.Hot
-                            }
-                        )
-                    }) {
-                        Text(
-                            text = when (commentSort) {
-                                CommentSort.Hot -> "按热度"
-                                CommentSort.Time -> "按时间"
-                                else -> ""
-                            }
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { showSendDialog = true }) {
+                            Text(text = "写评论")
+                        }
+                        TextButton(onClick = {
+                            onSwitchCommentSort(
+                                when (commentSort) {
+                                    CommentSort.Hot -> CommentSort.Time
+                                    CommentSort.Time -> CommentSort.Hot
+                                    else -> CommentSort.Hot
+                                }
+                            )
+                        }) {
+                            Text(
+                                text = when (commentSort) {
+                                    CommentSort.Hot -> "按热度"
+                                    CommentSort.Time -> "按时间"
+                                    else -> ""
+                                }
+                            )
+                        }
                     }
                 }
             }
