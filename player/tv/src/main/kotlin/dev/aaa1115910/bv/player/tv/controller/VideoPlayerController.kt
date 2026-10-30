@@ -80,6 +80,9 @@ fun VideoPlayerController(
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
+    commentPanelState: CommentPanelState = CommentPanelState(),
+    onLoadComments: (suspend () -> Unit)? = null,
+    onSendComment: (String) -> Unit = {},
 
     onRequestFocus: () -> Unit,
     content: @Composable BoxScope.() -> Unit
@@ -406,6 +409,9 @@ fun VideoPlayerController(
         )
         MenuController(
             show = showMenuController,
+            commentPanelState = commentPanelState,
+            onLoadComments = onLoadComments,
+            onSendComment = onSendComment,
             onResolutionChange = onResolutionChange,
             onCodecChange = onCodecChange,
             onAspectRatioChange = onAspectRatioChange,

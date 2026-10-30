@@ -61,6 +61,7 @@ import dev.aaa1115910.bv.player.entity.VideoPlayerClockData
 import dev.aaa1115910.bv.player.entity.VideoPlayerDebugInfoData
 import dev.aaa1115910.bv.player.entity.VideoPlayerSeekData
 import dev.aaa1115910.bv.player.entity.VideoPlayerStateData
+import dev.aaa1115910.bv.player.tv.controller.CommentPanelState
 import dev.aaa1115910.bv.player.tv.controller.VideoPlayerController
 import dev.aaa1115910.bv.player.util.danmakuMask
 import dev.aaa1115910.bv.util.countDownTimer
@@ -100,7 +101,10 @@ fun BvPlayer(
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
-    onUpdateDanmakuForPosition: (suspend (Long) -> Unit)? = null
+    onUpdateDanmakuForPosition: (suspend (Long) -> Unit)? = null,
+    commentPanelState: CommentPanelState = remember { CommentPanelState() },
+    onLoadComments: (suspend () -> Unit)? = null,
+    onSendComment: (String) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger("BvPlayer")
@@ -648,6 +652,9 @@ fun BvPlayer(
                 logger.info { "On subtitle bottom padding change: $padding" }
                 onSubtitleBottomPadding(padding)
             },
+            commentPanelState = commentPanelState,
+            onLoadComments = onLoadComments,
+            onSendComment = onSendComment,
             onRequestFocus = { focusRequester.requestFocus() },
         ) {
             LaunchedEffect(Unit) {

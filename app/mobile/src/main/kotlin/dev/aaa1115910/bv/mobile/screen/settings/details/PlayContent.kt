@@ -79,6 +79,11 @@ fun PlayContent(
             summary = "通过 BilibiliSponsorBlock 社区数据标记并跳过赞助片段",
             prefReq = PrefKeys.prefEnableSponsorBlockRequest
         )
+        SwitchPreferenceItem(
+            title = "发评反诈",
+            summary = "发送评论后检查评论是否只有自己可见（shadow ban）",
+            prefReq = PrefKeys.prefEnableCommentAntifraudRequest
+        )
         TextPreferenceItem(
             title = "赞助片段分类设置",
             summary = "为每个片段分类选择跳过方式",

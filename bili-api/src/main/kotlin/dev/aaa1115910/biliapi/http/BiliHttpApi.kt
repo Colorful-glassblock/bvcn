@@ -20,6 +20,7 @@ import dev.aaa1115910.biliapi.http.entity.region.RegionDynamic
 import dev.aaa1115910.biliapi.http.entity.region.RegionDynamicList
 import dev.aaa1115910.biliapi.http.entity.region.RegionFeedRcmd
 import dev.aaa1115910.biliapi.http.entity.region.RegionLocs
+import dev.aaa1115910.biliapi.http.entity.reply.CommentAddData
 import dev.aaa1115910.biliapi.http.entity.reply.CommentData
 import dev.aaa1115910.biliapi.http.entity.reply.CommentReplyData
 import dev.aaa1115910.biliapi.http.entity.search.AppSearchSquareData
@@ -1729,13 +1730,76 @@ object BiliHttpApi {
         type: Long,
         root: Long,
         pageSize: Int = 10,
-        pageNumber: Int = 1
+        pageNumber: Int = 1,
+        /** 传 null 表示未登录请求，用于对比检测评论是否被 shadow ban */
+        sessData: String? = null
     ): BiliResponse<CommentReplyData> = client.get("/x/v2/reply/reply") {
         parameter("oid", oid)
         parameter("type", type)
         parameter("root", root)
         parameter("ps", pageSize)
         parameter("pn", pageNumber)
+        parameter("sort", 1)
+        sessData?.let { header("Cookie", "SESSDATA=$sessData;") }
+    }.body()
+
+    /**
+     * 发表评论
+     *
+     * @param type 评论区类型，视频为 1
+     * @param oid 评论区 id，视频为 avid
+     * @param message 评论内容
+     * @param root 根评论 id，回复二级评论时填写
+     * @param parent 父评论 id，回复二级评论时填写
+     * @param csrf bili_jct
+     */
+    suspend fun postComment(
+        type: Long,
+        oid: Long,
+        message: String,
+        root: Long = 0,
+        parent: Long = 0,
+        csrf: String,
+        sessData: String
+    ): BiliResponse<CommentAddData> = client.post("/x/v2/reply/add") {
+        setBody(
+            FormDataContent(
+                Parameters.build {
+                    append("type", "$type")
+                    append("oid", "$oid")
+                    append("message", message)
+                    append("root", "$root")
+                    append("parent", "$parent")
+                    append("plat", "1")
+                    append("csrf", csrf)
+                }
+            )
+        )
+        header("Cookie", "SESSDATA=$sessData;")
+    }.body()
+
+    /**
+     * 在根评论下按时间翻找指定评论，用于 shadow ban 检测。
+     *
+     * 与 [getCommentReplies] 的区别：这里固定按时间排序并且不依赖登录态判断，
+     * 未登录时若拿不到任何数据会抛异常，调用方据此判断"不可见"。
+     */
+    suspend fun getCommentRepliesForCheck(
+        oid: Long,
+        type: Long,
+        root: Long,
+        pageNumber: Int = 1,
+        sessData: String? = null,
+        csrf: String? = null
+    ): BiliResponse<CommentReplyData> = client.get("/x/v2/reply/reply") {
+        parameter("oid", oid)
+        parameter("type", type)
+        parameter("root", root)
+        parameter("pn", pageNumber)
+        parameter("ps", 20)
+        parameter("sort", 1)
+        csrf?.let { parameter("csrf", it) }
+        sessData?.let { header("Cookie", "SESSDATA=$sessData;") }
     }.body()
 
     suspend fun getSeasonIdByAvid(
