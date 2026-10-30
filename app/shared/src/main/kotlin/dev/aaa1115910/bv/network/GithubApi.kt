@@ -21,6 +21,8 @@ import io.ktor.http.URLProtocol
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.cio.writeChannel
 import io.ktor.utils.io.copyAndClose
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -39,6 +41,18 @@ object GithubApi {
     private const val STABLE_RELEASE_TAG_PREFIX = "v"
     private const val RELEASES_PER_PAGE = 30
     private const val MAX_RELEASE_PAGES = 10
+
+    /** 成功结果的缓存有效期：GitHub 未认证接口每小时只有 60 次配额，不能每次进页面都打 */
+    private const val CACHE_TTL_MS = 30 * 60 * 1000L
+    /** 失败后的冷却时间，避免配额耗尽时反复重试把日志刷爆 */
+    private const val FAILURE_COOLDOWN_MS = 10 * 60 * 1000L
+
+    private class CacheEntry(val release: Release, val timestamp: Long)
+
+    private var cachedRelease: CacheEntry? = null
+    private var lastFailureAt = 0L
+    private var lastFailureMessage: String? = null
+    private val requestMutex = Mutex()
     private lateinit var client: HttpClient
     private val json = Json {
         coerceInputValues = true
@@ -124,8 +138,47 @@ object GithubApi {
 
     suspend fun getLatestReleaseBuild(): Release = getLatestRelease()
 
-    suspend fun getLatestBuild(): Release =
-        if (isAlpha) getLatestPreReleaseBuild() else getLatestReleaseBuild()
+    /**
+     * 获取当前渠道的最新构建。
+     *
+     * 带 30 分钟缓存与失败冷却：调用方可能在同一页面重复触发（进入设置页、打开弹窗各一次），
+     * 而 GitHub 未认证 API 每小时只有 60 次配额，直接每次都请求会很快被打爆。
+     *
+     * @param force 忽略缓存强制刷新
+     */
+    suspend fun getLatestBuild(force: Boolean = false): Release = requestMutex.withLock {
+        val now = System.currentTimeMillis()
+
+        if (!force) {
+            cachedRelease?.takeIf { now - it.timestamp < CACHE_TTL_MS }?.let {
+                return@withLock it.release
+            }
+            // 刚失败过就直接抛上次的错误，不再消耗配额
+            lastFailureMessage?.let { message ->
+                if (now - lastFailureAt < FAILURE_COOLDOWN_MS) {
+                    throw IllegalStateException(message)
+                }
+            }
+        }
+
+        try {
+            val release = if (isAlpha) getLatestPreReleaseBuild() else getLatestReleaseBuild()
+            cachedRelease = CacheEntry(release, now)
+            lastFailureMessage = null
+            release
+        } catch (e: Exception) {
+            lastFailureAt = now
+            lastFailureMessage = e.message ?: "检查更新失败"
+            throw e
+        }
+    }
+
+    /** 清空缓存，供设置页「重新检查」使用 */
+    fun invalidateCache() {
+        cachedRelease = null
+        lastFailureMessage = null
+        lastFailureAt = 0L
+    }
 
     private fun checkErrorMessage(data: String) {
         val responseElement = json.parseToJsonElement(data)

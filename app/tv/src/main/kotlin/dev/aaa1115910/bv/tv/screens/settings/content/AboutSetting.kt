@@ -44,6 +44,7 @@ fun AboutSetting(
     var showUpdateDialog by remember { mutableStateOf(false) }
     var latestVersionName by remember { mutableStateOf("Loading...") }
 
+    // 走缓存版本，和 UpdateDialog 共用一次请求结果
     LaunchedEffect(Unit) {
         launch(Dispatchers.IO) {
             runCatching {
