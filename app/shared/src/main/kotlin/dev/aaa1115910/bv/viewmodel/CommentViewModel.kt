@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import dev.aaa1115910.biliapi.entity.reply.Comment
 import dev.aaa1115910.biliapi.entity.reply.CommentPage
 import dev.aaa1115910.biliapi.entity.reply.CommentReplyPage
@@ -21,6 +22,7 @@ import dev.aaa1115910.bv.util.toast
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.annotation.KoinViewModel
 
@@ -30,6 +32,9 @@ class CommentViewModel(
 ) : ViewModel() {
     companion object {
         val logger = KotlinLogging.logger {}
+
+        /** 评论发出后需要时间进入未登录视角，等待 8 秒再检查是否被 shadow ban */
+        private const val ANTIFRAUD_CHECK_DELAY_MS = 8_000L
     }
 
     var commentId = 0L
@@ -54,6 +59,17 @@ class CommentViewModel(
     var refreshingReplies by mutableStateOf(false)
     var updatingComments by mutableStateOf(false)
     var updatingReplies by mutableStateOf(false)
+
+    /** 视频/动态作者 mid，作者可以删除自己评论区下的任意评论 */
+    var ownerMid by mutableStateOf<Long?>(null)
+
+    val currentUserMid: Long?
+        get() = commentRepository.currentUserMid
+
+    fun canDelete(comment: Comment): Boolean {
+        val currentMid = commentRepository.currentUserMid ?: return false
+        return comment.mid == currentMid || comment.mid == ownerMid
+    }
 
     suspend fun loadMoreComment() {
         if (updatingComments) return
@@ -151,8 +167,27 @@ class CommentViewModel(
     /** 评论发送状态 */
     var sendingComment by mutableStateOf(false)
 
+    /** 评论删除状态，避免重复提交 */
+    var deletingComment by mutableStateOf(false)
+
     /** 最近一次反诈检查结果，UI 弹窗消费后置空 */
     var antifraudResult by mutableStateOf<CommentAntifraud.CheckResult?>(null)
+
+    /**
+     * 回复指定评论。
+     *
+     * 根评论的 root/parent 都是自身 rpid；二级评论的 root 是所属根评论，
+     * parent 是被回复的这条二级评论。
+     */
+    suspend fun sendComment(message: String, replyTo: Comment?): Boolean {
+        if (replyTo == null) return sendComment(message)
+        val root = replyTo.root.takeIf { it != 0L } ?: replyTo.rpid
+        return sendComment(
+            message = message,
+            root = root,
+            parent = replyTo.rpid
+        )
+    }
 
     /**
      * 发表评论，可选在发送后做 shadow ban 检查。
@@ -181,26 +216,40 @@ class CommentViewModel(
             logger.fInfo { "Comment posted, rpid=$newRpid" }
             success = true
 
+            // 先刷新列表，让新评论尽快出现
+            if (root == 0L || rpid != root) {
+                refreshComments()
+            } else {
+                refreshReplies()
+            }
+
             if (Prefs.enableCommentAntifraud && newRpid != 0L) {
-                // 刚发出的评论不会立刻出现在列表里，稍等一下再查
-                delay(3000)
-                val result = CommentAntifraud.check(
-                    commentRepository = commentRepository,
-                    oid = commentId,
-                    type = commentType,
-                    rpid = newRpid,
-                    root = root,
-                    message = message
-                )
-                withContext(Dispatchers.Main) { antifraudResult = result }
+                withContext(Dispatchers.Main) {
+                    "评论已发送，8 秒后检查是否被屏蔽".toast(BVApp.context)
+                }
+                // 评论索引需要几秒才对外可见，8 秒后再对比登录/未登录结果。
+                // 用 viewModelScope 独立执行，不阻塞发送流程。
+                viewModelScope.launch(Dispatchers.IO) {
+                    runCatching {
+                        delay(ANTIFRAUD_CHECK_DELAY_MS)
+                        val result = CommentAntifraud.check(
+                            commentRepository = commentRepository,
+                            oid = commentId,
+                            type = commentType,
+                            rpid = newRpid,
+                            root = root,
+                            message = message
+                        )
+                        withContext(Dispatchers.Main) { antifraudResult = result }
+                    }.onFailure {
+                        logger.fException(it) { "Antifraud check failed" }
+                    }
+                }
             } else {
                 withContext(Dispatchers.Main) {
                     "评论已发送".toast(BVApp.context)
                 }
             }
-
-            // 刷新列表，让新评论尽快出现
-            if (root == 0L) refreshComments() else refreshReplies()
         }.onFailure {
             logger.fException(it) { "Send comment failed" }
             withContext(Dispatchers.Main) {
@@ -208,6 +257,46 @@ class CommentViewModel(
             }
         }
         sendingComment = false
+        return success
+    }
+
+    /**
+     * 删除评论。删除后从本地列表移除并重新拉取评论列表，更新内嵌回复和计数。
+     */
+    suspend fun deleteComment(comment: Comment): Boolean {
+        if (deletingComment) return false
+        deletingComment = true
+        var success = false
+        runCatching {
+            commentRepository.deleteComment(
+                oid = comment.oid,
+                type = comment.type,
+                rpid = comment.rpid
+            )
+            logger.fInfo { "Comment deleted, rpid=${comment.rpid}" }
+            success = true
+
+            withContext(Dispatchers.Main) {
+                comments.removeAll { it.rpid == comment.rpid }
+                replies.removeAll { it.rpid == comment.rpid }
+                if (replyRootComment?.rpid == comment.rpid || rpid == comment.rpid) {
+                    replyRootComment = null
+                    replies.clear()
+                }
+                "评论已删除".toast(BVApp.context)
+            }
+
+            // 根评论里内嵌的回复预览和回复数需要服务端重新计算
+            if (rpid != comment.rpid) {
+                runCatching { refreshComments() }
+            }
+        }.onFailure {
+            logger.fException(it) { "Delete comment failed" }
+            withContext(Dispatchers.Main) {
+                "删除失败：${it.localizedMessage}".toast(BVApp.context)
+            }
+        }
+        deletingComment = false
         return success
     }
 }

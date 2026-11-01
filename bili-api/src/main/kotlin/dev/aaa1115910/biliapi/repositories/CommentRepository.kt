@@ -143,6 +143,31 @@ class CommentRepository(
     }
 
     /**
+     * 删除评论。仅支持 Web 接口。
+     *
+     * @throws IllegalStateException 未登录或接口返回错误
+     */
+    suspend fun deleteComment(
+        oid: Long,
+        type: Long = 1,
+        rpid: Long
+    ) {
+        val csrf = authRepository.biliJct ?: throw IllegalStateException("未登录")
+        val sessData = authRepository.sessionData ?: throw IllegalStateException("未登录")
+        val response = BiliHttpApi.deleteComment(
+            type = type,
+            oid = oid,
+            rpid = rpid,
+            csrf = csrf,
+            sessData = sessData
+        )
+        if (response.code != 0) throw IllegalStateException(response.message)
+    }
+
+    val currentUserMid: Long?
+        get() = authRepository.mid
+
+    /**
      * 未登录状态下翻找根评论下的二级评论，判断指定 rpid 是否可见。
      *
      * 返回 null 表示翻页结束仍未找到；抛异常表示未登录请求被拒绝。

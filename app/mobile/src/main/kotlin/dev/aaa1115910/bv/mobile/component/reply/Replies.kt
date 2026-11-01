@@ -49,6 +49,9 @@ fun Replies(
     onRefreshReplies: () -> Unit,
     onSwitchReplySort: (CommentSort) -> Unit,
     onShowPreviewer: (List<Picture>, () -> Unit) -> Unit,
+    canDeleteComment: (Comment) -> Boolean = { false },
+    onReplyComment: (Comment) -> Unit = {},
+    onDeleteComment: (Comment) -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val pullToRefreshState = rememberPullToRefreshState()
@@ -82,7 +85,10 @@ fun Replies(
                         comment = rootComment,
                         previewerState = previewerState,
                         onShowPreviewer = onShowPreviewer,
-                        showReplies = false
+                        showReplies = false,
+                        canDelete = canDeleteComment(rootComment),
+                        onReply = onReplyComment,
+                        onDelete = onDeleteComment
                     )
                 }
             }
@@ -125,7 +131,10 @@ fun Replies(
                         comment = reply,
                         previewerState = previewerState,
                         onShowPreviewer = onShowPreviewer,
-                        showReplies = false
+                        showReplies = false,
+                        canDelete = canDeleteComment(reply),
+                        onReply = onReplyComment,
+                        onDelete = onDeleteComment
                     )
 
                     if (BuildConfig.DEBUG) {
