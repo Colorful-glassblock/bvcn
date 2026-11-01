@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
+import dev.aaa1115910.biliapi.entity.reply.Comment
 import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.biliapi.entity.video.SubtitleAiStatus
 import dev.aaa1115910.biliapi.entity.video.SubtitleAiType
@@ -79,7 +80,8 @@ fun MenuController(
     onSubtitleBottomPadding: (Dp) -> Unit,
     commentPanelState: CommentPanelState = CommentPanelState(),
     onLoadComments: (suspend () -> Unit)? = null,
-    onSendComment: (String) -> Unit = {}
+    onSendComment: (String, Comment?) -> Unit = { _, _ -> },
+    onDeleteComment: (Comment) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val defaultFocusRequester = remember { FocusRequester() }
@@ -141,7 +143,8 @@ fun MenuController(
     onSubtitleBottomPadding: (Dp) -> Unit,
     commentPanelState: CommentPanelState = CommentPanelState(),
     onLoadComments: (suspend () -> Unit)? = null,
-    onSendComment: (String) -> Unit = {}
+    onSendComment: (String, Comment?) -> Unit = { _, _ -> },
+    onDeleteComment: (Comment) -> Unit = {}
 ) {
     var selectedNavItem by remember { mutableStateOf(VideoPlayerMenuNavItem.Picture) }
     var focusState by remember { mutableStateOf(MenuFocusState.MenuNav) }
@@ -178,7 +181,11 @@ fun MenuController(
                     onSubtitleChange = onSubtitleChange,
                     onSubtitleSizeChange = onSubtitleSizeChange,
                     onSubtitleBackgroundOpacityChange = onSubtitleBackgroundOpacityChange,
-                    onSubtitleBottomPadding = onSubtitleBottomPadding
+onSubtitleBottomPadding = onSubtitleBottomPadding,
+                    commentPanelState = commentPanelState,
+                    onLoadComments = onLoadComments,
+                    onSendComment = onSendComment,
+                    onDeleteComment = onDeleteComment
                 )
                 MenuNavList(
                     modifier = Modifier
@@ -220,7 +227,8 @@ private fun MenuList(
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
-    onSendComment: (String) -> Unit = {},
+onSendComment: (String, Comment?) -> Unit = { _, _ -> },
+    onDeleteComment: (Comment) -> Unit = {},
     commentPanelState: CommentPanelState = CommentPanelState(),
     onLoadComments: (suspend () -> Unit)? = null,
     onFocusStateChange: (MenuFocusState) -> Unit
@@ -268,6 +276,7 @@ private fun MenuList(
                     panelState = commentPanelState,
                     onFocusStateChange = onFocusStateChange,
                     onSendComment = onSendComment,
+                    onDeleteComment = onDeleteComment,
                     onLoadComments = onLoadComments
                 )
             }

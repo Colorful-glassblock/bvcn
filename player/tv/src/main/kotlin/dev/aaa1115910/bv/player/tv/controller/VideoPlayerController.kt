@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.aaa1115910.biliapi.entity.reply.Comment
 import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.entity.Audio
@@ -82,7 +83,8 @@ fun VideoPlayerController(
     onSubtitleBottomPadding: (Dp) -> Unit,
     commentPanelState: CommentPanelState = CommentPanelState(),
     onLoadComments: (suspend () -> Unit)? = null,
-    onSendComment: (String) -> Unit = {},
+    onSendComment: (String, Comment?) -> Unit = { _, _ -> },
+    onDeleteComment: (Comment) -> Unit = {},
 
     onRequestFocus: () -> Unit,
     content: @Composable BoxScope.() -> Unit
@@ -412,6 +414,7 @@ fun VideoPlayerController(
             commentPanelState = commentPanelState,
             onLoadComments = onLoadComments,
             onSendComment = onSendComment,
+            onDeleteComment = onDeleteComment,
             onResolutionChange = onResolutionChange,
             onCodecChange = onCodecChange,
             onAspectRatioChange = onAspectRatioChange,
