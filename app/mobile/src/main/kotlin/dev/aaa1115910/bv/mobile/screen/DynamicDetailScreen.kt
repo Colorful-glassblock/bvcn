@@ -78,6 +78,7 @@ import dev.aaa1115910.bv.mobile.component.home.dynamic.DynamicContent
 import dev.aaa1115910.bv.mobile.component.home.dynamic.DynamicHeader
 import dev.aaa1115910.bv.mobile.component.reply.Comments
 import dev.aaa1115910.bv.mobile.component.reply.Replies
+import dev.aaa1115910.bv.mobile.component.reply.SendCommentDialog
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.swapList
 import dev.aaa1115910.bv.viewmodel.CommentViewModel
@@ -130,6 +131,14 @@ fun DynamicDetailScreen(
             modifier = modifier,
             dynamicDetailState = dynamicDetailState,
             onShowPreviewer = onShowPreviewer,
+        )
+    }
+
+    if (dynamicDetailState.showSendCommentDialog) {
+        SendCommentDialog(
+            replyTo = dynamicDetailState.sendCommentTarget,
+            onDismiss = { dynamicDetailState.showSendCommentDialog = false },
+            onSend = dynamicDetailState::sendComment
         )
     }
 
@@ -260,6 +269,9 @@ fun DynamicDetailMobileContent(
                         dynamicDetailState.refreshReplies()
                         showReplies = true
                     },
+                    canDeleteComment = dynamicDetailState::canDeleteComment,
+                    onReplyComment = dynamicDetailState::onReplyComment,
+                    onDeleteComment = dynamicDetailState::deleteComment,
                     header = {
                         DynamicPart(
                             modifier = Modifier,
@@ -311,6 +323,9 @@ fun DynamicDetailMobileContent(
                 onSwitchSort = dynamicDetailState::switchReplySort,
                 onRefreshReplies = dynamicDetailState::refreshReplies,
                 onLoadMoreReplies = dynamicDetailState::loadMoreReplies,
+                canDeleteComment = dynamicDetailState::canDeleteComment,
+                onReplyComment = dynamicDetailState::onReplyComment,
+                onDeleteComment = dynamicDetailState::deleteComment,
             )
         }
     }
@@ -381,7 +396,10 @@ fun DynamicDetailScreenPadContent(
                             dynamicDetailState.updateCurrentComment(comment)
                             dynamicDetailState.refreshReplies()
                             showReplies = true
-                        }
+                        },
+                        canDeleteComment = dynamicDetailState::canDeleteComment,
+                        onReplyComment = dynamicDetailState::onReplyComment,
+                        onDeleteComment = dynamicDetailState::deleteComment
                     )
                 }
                 AnimatedVisibility(
@@ -404,6 +422,9 @@ fun DynamicDetailScreenPadContent(
                         onSwitchSort = dynamicDetailState::switchReplySort,
                         onRefreshReplies = dynamicDetailState::refreshReplies,
                         onLoadMoreReplies = dynamicDetailState::loadMoreReplies,
+                        canDeleteComment = dynamicDetailState::canDeleteComment,
+                        onReplyComment = dynamicDetailState::onReplyComment,
+                        onDeleteComment = dynamicDetailState::deleteComment,
                     )
                 }
             }
@@ -422,6 +443,8 @@ data class DynamicDetailState(
     val comments get() = commentViewModel.comments
     val replies get() = commentViewModel.replies
     var replyComment by mutableStateOf<Comment?>(null)
+    var sendCommentTarget by mutableStateOf<Comment?>(null)
+    var showSendCommentDialog by mutableStateOf(false)
 
     val commentSort get() = commentViewModel.commentSort
     val replySort get() = commentViewModel.replySort
@@ -450,6 +473,27 @@ data class DynamicDetailState(
         commentViewModel.commentType = comment.type
         commentViewModel.rpid = comment.rpid
     }
+
+    fun onReplyComment(comment: Comment?) {
+        sendCommentTarget = comment
+        showSendCommentDialog = true
+    }
+
+    fun sendComment(message: String) {
+        val target = sendCommentTarget
+        showSendCommentDialog = false
+        scope.launch(Dispatchers.IO) {
+            commentViewModel.sendComment(message, target)
+        }
+    }
+
+    fun deleteComment(comment: Comment) {
+        scope.launch(Dispatchers.IO) {
+            commentViewModel.deleteComment(comment)
+        }
+    }
+
+    fun canDeleteComment(comment: Comment): Boolean = commentViewModel.canDelete(comment)
 
     fun switchCommentSort(newSort: CommentSort) {
         scope.launch(Dispatchers.IO) {
@@ -500,6 +544,7 @@ fun rememberDynamicDetailState(
 
         scope.launch(Dispatchers.IO) {
             dynamicDetailViewModel.loadDynamic()
+            commentViewModel.ownerMid = dynamicDetailViewModel.dynamicItem?.author?.mid
             if (dynamicDetailViewModel.dynamicItem?.commentId != null && dynamicDetailViewModel.dynamicItem?.commentType != null) {
                 commentViewModel.commentId = dynamicDetailViewModel.dynamicItem!!.commentId
                 commentViewModel.commentType = dynamicDetailViewModel.dynamicItem!!.commentType
@@ -569,7 +614,10 @@ private fun CommentPart(
     onRefreshComments: () -> Unit,
     onSwitchCommentSort: (CommentSort) -> Unit,
     onShowPreviewer: (newPictures: List<Picture>, afterSetPictures: () -> Unit) -> Unit,
-    onShowReplies: (comment: Comment) -> Unit
+    onShowReplies: (comment: Comment) -> Unit,
+    canDeleteComment: (Comment) -> Boolean = { false },
+    onReplyComment: (Comment?) -> Unit = {},
+    onDeleteComment: (Comment) -> Unit = {}
 ) {
     Comments(
         modifier = modifier,
@@ -584,6 +632,9 @@ private fun CommentPart(
         onSwitchCommentSort = onSwitchCommentSort,
         onShowPreviewer = onShowPreviewer,
         onShowReplies = onShowReplies,
+        canDeleteComment = canDeleteComment,
+        onReplyComment = onReplyComment,
+        onDeleteComment = onDeleteComment
     )
 }
 
@@ -603,7 +654,10 @@ private fun ReplyPart(
     onShowPreviewer: (List<Picture>, () -> Unit) -> Unit,
     onCloseReplies: () -> Unit,
     onRefreshReplies: () -> Unit,
-    onLoadMoreReplies: () -> Unit
+    onLoadMoreReplies: () -> Unit,
+    canDeleteComment: (Comment) -> Boolean = { false },
+    onReplyComment: (Comment?) -> Unit = {},
+    onDeleteComment: (Comment) -> Unit = {}
 ) {
     Scaffold(
         modifier = modifier
@@ -638,6 +692,9 @@ private fun ReplyPart(
             onShowPreviewer = onShowPreviewer,
             onLoadMoreReplies = onLoadMoreReplies,
             onRefreshReplies = onRefreshReplies,
+            canDeleteComment = canDeleteComment,
+            onReplyComment = onReplyComment,
+            onDeleteComment = onDeleteComment
         )
     }
 }

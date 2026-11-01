@@ -19,10 +19,25 @@ class CommentPanelState {
     var hasMore by mutableStateOf(true)
     var loaded by mutableStateOf(false)
 
+    /** 当前正在回复的评论，null 表示发顶层评论 */
+    var replyTarget by mutableStateOf<Comment?>(null)
+
+    /** 当前登录用户 mid，用于判断能否删除评论 */
+    var currentUserMid by mutableStateOf<Long?>(null)
+
+    /** 视频/动态作者 mid，作者可以删除任意评论 */
+    var ownerMid by mutableStateOf<Long?>(null)
+
+    fun canDelete(comment: Comment): Boolean {
+        val mid = currentUserMid ?: return false
+        return comment.mid == mid || comment.mid == ownerMid
+    }
+
     fun reset() {
         comments.clear()
         loading = false
         hasMore = true
         loaded = false
+        replyTarget = null
     }
 }

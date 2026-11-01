@@ -35,6 +35,7 @@ import com.kuaishou.akdanmaku.ecs.component.filter.TypeFilter
 import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskFrame
+import dev.aaa1115910.biliapi.entity.reply.Comment
 import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.AkDanmakuPlayer
@@ -106,7 +107,8 @@ fun BvPlayer(
     onUpdateDanmakuForPosition: (suspend (Long) -> Unit)? = null,
     commentPanelState: CommentPanelState = remember { CommentPanelState() },
     onLoadComments: (suspend () -> Unit)? = null,
-    onSendComment: (String) -> Unit = {}
+    onSendComment: (String, Comment?) -> Unit = { _, _ -> },
+    onDeleteComment: (Comment) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger("BvPlayer")
@@ -657,6 +659,7 @@ fun BvPlayer(
             commentPanelState = commentPanelState,
             onLoadComments = onLoadComments,
             onSendComment = onSendComment,
+            onDeleteComment = onDeleteComment,
             onPlayModeChange = { playMode ->
                 logger.info { "On play mode change: $playMode" }
                 onPlayModeChange(playMode)

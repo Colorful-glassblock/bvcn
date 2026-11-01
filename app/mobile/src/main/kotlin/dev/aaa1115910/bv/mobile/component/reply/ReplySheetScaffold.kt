@@ -58,6 +58,9 @@ fun ReplySheetScaffold(
     sheetState: BottomSheetScaffoldState,
     previewerState: ImagePreviewerState,
     onShowPreviewer: (newPictures: List<Picture>, afterSetPictures: () -> Unit) -> Unit,
+    canDeleteComment: (Comment) -> Boolean = { false },
+    onReplyComment: (Comment) -> Unit = {},
+    onDeleteComment: (Comment) -> Unit = {},
     videoDetailRepository: VideoDetailRepository = getKoin().get(),
     content: @Composable () -> Unit
 ) {
@@ -165,6 +168,9 @@ fun ReplySheetScaffold(
                             onShowPreviewer = onShowPreviewer,
                             showReplies = false,
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            canDelete = canDeleteComment(comment!!),
+                            onReply = onReplyComment,
+                            onDelete = onDeleteComment
                         )
                     }
                 }
@@ -209,6 +215,9 @@ fun ReplySheetScaffold(
                             onShowPreviewer = onShowPreviewer,
                             showReplies = false,
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            canDelete = canDeleteComment(reply),
+                            onReply = onReplyComment,
+                            onDelete = onDeleteComment
                         )
 
                         if (BuildConfig.DEBUG) {
