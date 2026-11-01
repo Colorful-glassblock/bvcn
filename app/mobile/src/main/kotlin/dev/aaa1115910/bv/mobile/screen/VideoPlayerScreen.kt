@@ -154,12 +154,41 @@ fun VideoPlayerScreen(
     )
     val replySheetState = rememberBottomSheetScaffoldState()
 
+    var commentReplyTarget by remember { mutableStateOf<Comment?>(null) }
+    var showSendCommentDialog by remember { mutableStateOf(false) }
+
+    val onReplyComment: (Comment?) -> Unit = { target ->
+        commentReplyTarget = target
+        showSendCommentDialog = true
+    }
+    val onDeleteComment: (Comment) -> Unit = { comment ->
+        scope.launch(Dispatchers.IO) { commentVideModel.deleteComment(comment) }
+    }
+
     val setPreviewerPictures: (List<Picture>, () -> Unit) -> Unit =
         { newPictures, afterSetPictures ->
             pictures.clear()
             pictures.addAll(newPictures)
             afterSetPictures()
         }
+
+    LaunchedEffect(videoDetailViewModel.videoDetail?.author?.mid) {
+        commentVideModel.ownerMid = videoDetailViewModel.videoDetail?.author?.mid
+    }
+
+    if (showSendCommentDialog) {
+        SendCommentDialog(
+            replyTo = commentReplyTarget,
+            onDismiss = { showSendCommentDialog = false },
+            onSend = { message ->
+                val target = commentReplyTarget
+                showSendCommentDialog = false
+                scope.launch(Dispatchers.IO) {
+                    commentVideModel.sendComment(message, target)
+                }
+            }
+        )
+    }
 
     SideEffect {
         systemUiController.isStatusBarVisible = !isVideoFullscreen
@@ -420,7 +449,10 @@ fun VideoPlayerScreen(
                         repliesCount = commentVideModel.rpCount,
                         sheetState = replySheetState,
                         previewerState = previewerState,
-                        onShowPreviewer = setPreviewerPictures
+                        onShowPreviewer = setPreviewerPictures,
+                        canDeleteComment = commentVideModel::canDelete,
+                        onReplyComment = onReplyComment,
+                        onDeleteComment = onDeleteComment
                     ) {
                         Column {
                             TabRow(
@@ -543,11 +575,9 @@ fun VideoPlayerScreen(
                                                 commentVideModel.rpCount = repliesCount
                                                 scope.launch { replySheetState.bottomSheetState.expand() }
                                             },
-                                            onSendComment = { message ->
-                                                scope.launch(Dispatchers.IO) {
-                                                    commentVideModel.sendComment(message)
-                                                }
-                                            }
+                                            canDeleteComment = commentVideModel::canDelete,
+                                            onReplyComment = onReplyComment,
+                                            onDeleteComment = onDeleteComment
                                         )
                                     }
                                 }
@@ -664,7 +694,10 @@ fun VideoPlayerScreen(
                         repliesCount = commentVideModel.rpCount,
                         sheetState = replySheetState,
                         previewerState = previewerState,
-                        onShowPreviewer = setPreviewerPictures
+                        onShowPreviewer = setPreviewerPictures,
+                        canDeleteComment = commentVideModel::canDelete,
+                        onReplyComment = onReplyComment,
+                        onDeleteComment = onDeleteComment
                     ) {
                         VideoComments(
                             modifier = Modifier.fillMaxWidth(),
@@ -689,7 +722,10 @@ fun VideoPlayerScreen(
                                 commentVideModel.rpid = rpId
                                 commentVideModel.rpCount = repliesCount
                                 scope.launch { replySheetState.bottomSheetState.expand() }
-                            }
+                            },
+                            canDeleteComment = commentVideModel::canDelete,
+                            onReplyComment = onReplyComment,
+                            onDeleteComment = onDeleteComment
                         )
                     }
                 }
@@ -840,19 +876,10 @@ fun VideoComments(
     onSwitchCommentSort: (CommentSort) -> Unit,
     onShowPreviewer: (newPictures: List<Picture>, afterSetPictures: () -> Unit) -> Unit,
     onShowReplies: (rpId: Long, repliesCount: Int) -> Unit,
-    onSendComment: (String) -> Unit = {}
+    canDeleteComment: (Comment) -> Boolean = { false },
+    onReplyComment: (Comment?) -> Unit = {},
+    onDeleteComment: (Comment) -> Unit = {}
 ) {
-    var showSendDialog by remember { mutableStateOf(false) }
-
-    if (showSendDialog) {
-        SendCommentDialog(
-            onDismiss = { showSendDialog = false },
-            onSend = { message ->
-                onSendComment(message)
-                showSendDialog = false
-            }
-        )
-    }
     val listState = rememberLazyListState()
     val pullRefreshState = rememberPullRefreshState(refreshingComments, { onRefreshComments() })
 
@@ -894,7 +921,7 @@ fun VideoComments(
                         style = MaterialTheme.typography.titleMedium
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { showSendDialog = true }) {
+                        TextButton(onClick = { onReplyComment(null) }) {
                             Text(text = "写评论")
                         }
                         TextButton(onClick = {
@@ -926,7 +953,10 @@ fun VideoComments(
                         onShowPreviewer = onShowPreviewer,
                         onShowReply = { rpId ->
                             onShowReplies(rpId, comment.repliesCount)
-                        }
+                        },
+                        canDelete = canDeleteComment(comment),
+                        onReply = onReplyComment,
+                        onDelete = onDeleteComment
                     )
                 }
             }

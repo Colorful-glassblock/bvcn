@@ -19,9 +19,17 @@ import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -66,8 +74,35 @@ fun CommentItem(
     showReplies: Boolean = true,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     onShowPreviewer: (newPictures: List<Picture>, afterSetPictures: () -> Unit) -> Unit,
-    onShowReply: (rpid: Long) -> Unit = {}
+    onShowReply: (rpid: Long) -> Unit = {},
+    canDelete: Boolean = false,
+    onReply: (Comment) -> Unit = {},
+    onDelete: (Comment) -> Unit = {}
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf(false) }
+
+    if (pendingDelete) {
+        AlertDialog(
+            onDismissRequest = { pendingDelete = false },
+            title = { Text(text = "删除评论") },
+            text = { Text(text = "确定删除这条评论吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingDelete = false
+                    onDelete(comment)
+                }) {
+                    Text(text = "删除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = false }) {
+                    Text(text = "取消")
+                }
+            }
+        )
+    }
+
     Surface(
         modifier = modifier,
         color = containerColor
@@ -108,22 +143,37 @@ fun CommentItem(
                         )
                     }
                     Box {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "更多操作"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
                         ) {
-                            //TODO like comment
-                            /*IconButton(
-                                modifier = Modifier.size(24.dp),
-                                onClick = { *//*TODO*//* }
-                            ) {
-                                Icon(
-                                    modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.Outlined.ThumbUpAlt,
-                                    contentDescription = null
+                            DropdownMenuItem(
+                                text = { Text(text = "回复") },
+                                onClick = {
+                                    menuExpanded = false
+                                    onReply(comment)
+                                }
+                            )
+                            if (canDelete) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "删除",
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    },
+                                    onClick = {
+                                        menuExpanded = false
+                                        pendingDelete = true
+                                    }
                                 )
                             }
-                            Text(text = "233")*/
                         }
                     }
                 }

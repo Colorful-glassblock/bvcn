@@ -1785,6 +1785,34 @@ object BiliHttpApi {
     }.body()
 
     /**
+     * 删除评论
+     *
+     * @param type 评论区类型，视频为 1
+     * @param oid 评论区 id，视频为 avid
+     * @param rpid 要删除的评论 id
+     * @param csrf bili_jct
+     */
+    suspend fun deleteComment(
+        type: Long,
+        oid: Long,
+        rpid: Long,
+        csrf: String,
+        sessData: String
+    ): BiliResponseWithoutData = client.post("/x/v2/reply/del") {
+        setBody(
+            FormDataContent(
+                Parameters.build {
+                    append("type", "$type")
+                    append("oid", "$oid")
+                    append("rpid", "$rpid")
+                    append("csrf", csrf)
+                }
+            )
+        )
+        header("Cookie", "SESSDATA=$sessData;")
+    }.body()
+
+    /**
      * 在根评论下按时间翻找指定评论，用于 shadow ban 检测。
      *
      * 与 [getCommentReplies] 的区别：这里固定按时间排序并且不依赖登录态判断，

@@ -52,7 +52,10 @@ fun Comments(
     onRefreshComments: () -> Unit,
     onSwitchCommentSort: (CommentSort) -> Unit,
     onShowPreviewer: (newPictures: List<Picture>, afterSetPictures: () -> Unit) -> Unit,
-    onShowReplies: (comment: Comment) -> Unit
+    onShowReplies: (comment: Comment) -> Unit,
+    canDeleteComment: (Comment) -> Boolean = { false },
+    onReplyComment: (Comment) -> Unit = {},
+    onDeleteComment: (Comment) -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val pullToRefreshState = rememberPullToRefreshState()
@@ -127,7 +130,10 @@ fun Comments(
                         onShowPreviewer = onShowPreviewer,
                         onShowReply = { _ ->
                             onShowReplies(comment)
-                        }
+                        },
+                        canDelete = canDeleteComment(comment),
+                        onReply = onReplyComment,
+                        onDelete = onDeleteComment
                     )
                 }
             }

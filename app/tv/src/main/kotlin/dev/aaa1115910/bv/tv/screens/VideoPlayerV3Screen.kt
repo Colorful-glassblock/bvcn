@@ -38,6 +38,7 @@ import dev.aaa1115910.bv.viewmodel.VideoPlayerV3ViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -56,6 +57,7 @@ fun VideoPlayerV3Screen(
         commentPanelState.reset()
         commentViewModel.commentId = playerViewModel.currentAidForComment
         commentViewModel.commentType = 1
+        commentPanelState.currentUserMid = commentViewModel.currentUserMid
     }
 
     CommentAntifraudDialog(
@@ -229,11 +231,24 @@ fun VideoPlayerV3Screen(
                 commentPanelState.hasMore = commentViewModel.hasMoreComments
                 commentPanelState.loading = false
             },
-            onSendComment = { message ->
+            onSendComment = { message, replyTo ->
                 scope.launch(Dispatchers.IO) {
-                    commentViewModel.sendComment(message)
-                    commentPanelState.comments.clear()
-                    commentPanelState.comments.addAll(commentViewModel.comments)
+                    commentViewModel.sendComment(message, replyTo)
+                    withContext(Dispatchers.Main) {
+                        commentPanelState.comments.clear()
+                        commentPanelState.comments.addAll(commentViewModel.comments)
+                        commentPanelState.hasMore = commentViewModel.hasMoreComments
+                    }
+                }
+            },
+            onDeleteComment = { comment ->
+                scope.launch(Dispatchers.IO) {
+                    commentViewModel.deleteComment(comment)
+                    withContext(Dispatchers.Main) {
+                        commentPanelState.comments.clear()
+                        commentPanelState.comments.addAll(commentViewModel.comments)
+                        commentPanelState.hasMore = commentViewModel.hasMoreComments
+                    }
                 }
             }
         )

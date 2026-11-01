@@ -44,6 +44,8 @@ data class Comment(
     val pictures: List<Picture>,
     val replies: List<Comment>,
     val repliesCount: Int,
+    /** 根评论 id。根评论自身为 0 或自身 rpid，二级评论为所属根评论 id */
+    val root: Long = 0,
 ) {
     companion object {
         fun fromReply(reply: dev.aaa1115910.biliapi.http.entity.reply.CommentData.Reply): Comment {
@@ -63,7 +65,8 @@ data class Comment(
                 emotes = reply.content.emote.values.map { Emote.fromEmote(it) },
                 pictures = reply.content.pictures.map { Picture.fromPicture(it) },
                 replies = reply.replies.map { fromReply(it) },
-                repliesCount = reply.count
+                repliesCount = reply.count,
+                root = reply.root
             )
         }
 
@@ -85,7 +88,8 @@ data class Comment(
                 pictures = reply.content.picturesList.map { Picture.fromPicture(it) },
                 replies = reply.repliesList.map { fromReplyInfo(it) },
                 repliesCount = runCatching { reply.replyControl.subReplyEntryText.split(" ")[1].toInt() }
-                    .getOrDefault(0)
+                    .getOrDefault(0),
+                root = reply.root
             )
         }
     }
